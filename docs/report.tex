@@ -1,0 +1,517 @@
+\documentclass[14pt]{article}
+\usepackage{graphics}
+\usepackage{epsfig}
+\usepackage{times}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{subcaption}
+\usepackage{multirow}
+\usepackage{gensymb}
+\usepackage{array}
+\usepackage{float}
+\usepackage{indentfirst}
+\newcolumntype{P}[1]{>{\centering\arraybackslash}p{#1}}
+%ba_erol_iyte
+\usepackage{booktabs, makecell}
+\usepackage{diagbox}
+\usepackage{float}
+\floatstyle{plaintop}
+\restylefloat{table}
+\usepackage{natbib}
+\usepackage{pgfgantt}
+\usepackage{rotating}
+
+
+\topmargin      0.0in
+\headheight     0.0in
+\headsep        0.0in
+\oddsidemargin  0.0in
+\evensidemargin 0.0in
+\textheight     9.0in
+\textwidth      6.5in
+
+\title{{\bf CENG424 Embedded Computer Systems\\ Project Proposal \\ Spring 2026} \\
+	\it Distributed Architecture for Rudimentary Radar Simulation}
+
+
+\date{\today}
+
+\begin{document}
+
+\pagestyle{plain}
+\pagenumbering{roman}
+\maketitle
+
+
+%\begin{figure}[H]
+%	\centering
+%	\includegraphics[ scale = 0.35]{iyte_logo} 
+%\end{figure}
+
+\textbf{ Group Members}
+\begin{itemize}
+	\item Mete Akın Akdoğan  \& 290201005
+	\item Yiğit Sarıyar \& 290201053
+	\item Meriç Kelemeden \& 290201091 
+    \item Necla Akyol \& 300201038 
+	\item Yusuf Celal Zeybek \& 310201105
+
+
+\end{itemize}
+
+
+
+\cleardoublepage
+\pagenumbering{arabic}
+
+\abstract
+%This project presents a dual-node embedded radar system capable of secure environment scanning, real-time visualization, and Moving Target Indication (MTI). Unlike static scanning projects, this system implements a Track-While-Scan (TWS) algorithm to calculate motion vectors between consecutive sweeps. Node 1 acts as the mechanical scanning unit, employing a 180-degree micro-servo and a distance sensor to perform bidirectional (left-to-right and right-to-left) sweeps. The acquired telemetry is encrypted, validated via CRC, and transmitted over UART. Node 2, an Edge Computing device (Jetson Nano), decrypts the data and executes a spatial correlation algorithm to match targets between the two sweeps. By calculating the Euclidean distance between consecutive target positions, the system renders dynamic velocity vectors (arrows) on the Plan Position Indicator (PPI) display. Upon completing a full bidirectional tracking cycle, the Edge device captures the graphical framebuffer of the PPI display, applies a 1-bit monochrome thresholding algorithm, and outputs a physical Raster Bitmap image of the radar map via a thermal receipt printer
+\iffalse
+%This project presents a dual-node embedded radar system capable of secure
+environment scanning, real-time visualization, and Moving Target Indication
+(MTI). Unlike static scanning projects, this system implements a
+Track-While-Scan (TWS) algorithm to calculate motion vectors between
+consecutive half-PPI sweeps covering a 180\textdegree{} field of view.
+Node~1 acts as the mechanical scanning unit, employing an MG90S
+180\textdegree{} micro-servo and a US-100 ultrasonic distance sensor to
+perform bidirectional sweeps at a 2\textdegree{} angular resolution. Each
+telemetry frame is encrypted with the XTEA block cipher, validated via a
+16-bit CRC (CCITT), and transmitted over UART at 115200~baud. Node~2, an
+NVIDIA Jetson Nano edge device (4\,GB LPDDR4, 128-core Maxwell GPU),
+decrypts the data and executes a Nearest-Neighbor Euclidean spatial
+correlation algorithm to match targets across consecutive sweep buffers. By
+computing the displacement vector $\vec{d} = (x_2 - x_1,\; y_2 - y_1)$
+between matched target positions, the system renders dynamic velocity arrows
+on a Python-based Plan Position Indicator (PPI) display. Upon completing a
+full bidirectional tracking cycle, Ubuntu on the Jetson Nano transmits
+ESC/POS commands to a Bluetooth thermal printer, outputting a physical raster
+bitmap of the radar map that serves as a tamper-evident tactical log
+independent of any persistent storage medium.
+\fi
+This project proposes a secure, dual-node embedded radar system designed for real-time environment scanning and \textbf{Moving Target Indication (MTI).} To overcome the latency and processing bottlenecks of traditional single-node static scanners, we introduce a distributed Track-While-Scan (TWS) architecture. The first node, an Arduino Uno governed by FreeRTOS, functions as a hard real-time mechanical scanning unit. It performs 180-degree bidirectional sweeps using a distance sensor, encrypts the telemetry via the \textbf{XTEA} cipher, applies \textbf{CRC-16} validation, and transmits the payload over an interrupt-driven \textbf{UART} interface. The second node, an \textbf{NVIDIA Jetson Nano} edge device, ingests this stream using a custom C++ backend. To achieve high-fidelity visualization, the system leverages the \textbf{Vulkan API}, offloading spatial correlation to Compute Shaders to match targets across sweeps. The resulting velocity vectors and coordinate data are rendered at 60+ FPS into a cinematic, WWII-era 3D Plan Position Indicator (PPI) interface. Finally, the system extracts the Vulkan framebuffer, applies 1-bit luminance thresholding, and dispatches a physical raster bitmap log via a direct USB connection to a thermal receipt printer. Ultimately, this project delivers a comprehensive cyber-physical system, bridging hard real-time embedded data acquisition with low-level GPU-accelerated edge processing.
+
+
+\cleardoublepage
+
+\section{Introduction}
+%Advanced radar networks do not merely detect the presence of objects; they track their trajectories over time to predict future positions. This concept, known as Moving Target Indication (MTI), requires complex data correlation algorithms. This project simulates a 180-degree surface-search radar that incorporates a fundamental MTI pipeline, paying homage to the evolution of WWII radar interfaces like the Plan Position Indicator (PPI). The physical layer involves a secure, microcontroller-driven servo-sensor array. The cognitive layer, processed on an Edge computing device, correlates data arrays from consecutive sweeps to deduce motion vectors. This allows the graphical interface to not only display raw positional "blips" but also draw directional arrows indicating target velocity and heading, finalizing the process with a physical tactical log.
+
+Advanced radar networks do not merely detect the presence of objects; they
+track their trajectories over time to predict future positions. This concept,
+known as Moving Target Indication (MTI), requires complex data-correlation
+algorithms that are typically confined to high-end, resource-rich platforms.
+This project simulates a 180\textdegree{} surface-search radar --- technically
+a half-PPI, covering the forward hemisphere --- that incorporates a fundamental
+MTI pipeline, paying homage to the Plan Position Indicator displays of WWII-era
+radar operators while demonstrating that a constrained embedded architecture can
+achieve meaningful target-tracking capability when computational concerns are
+properly separated across a distributed node topology.
+
+The physical layer is handled solely by an Arduino microcontroller responsible
+for servo actuation and US-100 ultrasonic sensor polling. All computationally
+intensive work --- XTEA decryption, spatial correlation, graphical rendering,
+and direct USB print dispatch --- is offloaded to an NVIDIA Jetson Nano edge
+device running Ubuntu. A custom, secure UART protocol with XTEA encryption and
+CRC-16 validation bridges the two nodes, ensuring telemetry integrity without
+exceeding the timing budget of the 8-bit sensor node. This separation of
+concerns allows the sensor node to maintain a consistent, uninterrupted sweep
+rate while the edge device processes and visualizes data asynchronously,
+eliminating the angular blind-spots that afflict conventional single-node
+implementations.
+
+\section{Problem Definition}
+%Single-node embedded radar projects suffer from severe processing bottlenecks: driving a motor, waiting for echoes, and rendering graphics sequentially causes unacceptable latency, resulting in "blind spots" during scans. Furthermore, raw serial communication is highly susceptible to data corruption and lacks security. Our proposed solution solves the timing bottleneck through a distributed architecture (Microcontroller for hardware manipulation, Jetson Nano for GUI and processing). It solves the data integrity problem by implementing a custom payload packaging protocol (Encryption + CRC) over the serial link. Finally, it addresses the lack of analytical tracking in conventional projects by offloading the mathematical correlation of target vectors to the Edge device, allowing for advanced graphical rasterization and thermal printing without halting the sensor sweep.
+
+Mobile or field-deployable surveillance scenarios require a low-cost radar
+prototype that simultaneously satisfies three constraints: (1)~real-time
+target tracking without scan blind-spots, (2)~tamper-resistant data integrity
+over the sensor link, and (3)~a physical, persistent record of the radar map
+that does not depend on fragile digital storage. Existing hobby-grade
+single-node radar projects fail on all three counts.
+
+\textbf{Processing Bottleneck.} When a single microcontroller sequentially
+handles servo actuation, sensor polling, and graphical rendering in a
+super-loop, it introduces unacceptable scan latency. During the rendering phase
+the sensor is idle, creating angular blind-spots where a moving target may go
+undetected. Our distributed architecture eliminates this by restricting the
+microcontroller to sensor-only tasks while the edge device renders
+asynchronously.
+
+\textbf{Communication Vulnerability.} Conventional Arduino-to-PC serial links
+transmit raw ASCII or unframed binary data with no integrity protection. A
+single bit-flip caused by electromagnetic interference can silently corrupt a
+distance reading, introducing phantom targets or dropping real ones. Our
+protocol addresses this with a 16-bit CRC integrity check and XTEA payload
+encryption on every transmitted frame.
+
+\textbf{Absence of Target Tracking.} Displaying a static ``blip'' per scan
+provides no information about target motion. Our Track-While-Scan algorithm
+correlates the forward sweep buffer with the return sweep buffer to compute
+displacement vectors $\vec{d}_i = \hat{b}_i - a_i$, giving operators
+directional and speed cues in addition to raw positional data. The resulting
+motion vectors are rendered as scaled arrows on the PPI and preserved as a
+physical thermal printout at the end of each bidirectional cycle.
+
+
+
+\section{Literature Review}
+\iffalse
+In this section, we review existing methodologies related to microcontroller-based spatial scanning, Edge computing in IoT networks, and target tracking algorithms. We highlight the strengths and weaknesses of these approaches to clarify the novelty of our proposed dual-node architecture.
+
+% TODO: Google Scholar Search Keywords -> "Arduino radar scanner", "low-cost ultrasonic mapping", "microcontroller distance visualization"
+\textbf{Microcontroller-Based Spatial Scanning:}
+Numerous studies, such as \cite{TODO_ArduinoRadar1} and \cite{TODO_LowCostSonar}, introduce approaches for environment mapping using single-core microcontrollers and distance sensors. 
+\textit{Strengths:} These systems are highly accessible, low-cost, and power-efficient for static environment demonstrations.
+\textit{Weaknesses:} They suffer from severe processing bottlenecks. Because a single microcontroller handles motor actuation, sensor polling, and graphical rendering sequentially, they exhibit high latency. This makes real-time tracking of dynamic targets nearly impossible without frame drops or sensor misses.
+
+% TODO: Google Scholar Search Keywords -> "Edge computing IoT task offloading", "Arduino Jetson Nano distributed system", "Edge node visualization"
+\textbf{Edge Computing and Task Offloading in Embedded Systems:}
+To resolve microcontroller bottlenecks, \cite{TODO_EdgeComputing1} propose a method for offloading complex computational tasks to Edge devices.
+\textit{Strengths:} Edge computing (e.g., using NVIDIA Jetson) provides the necessary RAM and GPU acceleration for high-fidelity visualization and complex algorithm execution without disrupting the real-time constraints of the physical sensor node.
+\textit{Weaknesses:} Distributing the system introduces communication vulnerabilities. Standard unencrypted serial links between the MCU and the Edge device can be easily intercepted, or data packets can be corrupted due to noise.
+
+% TODO: Google Scholar Search Keywords -> "Track while scan algorithm", "Moving target indication embedded", "spatial correlation radar"
+\textbf{Target Tracking and Moving Target Indication (MTI):}
+Advanced radar systems utilize Track-While-Scan (TWS) algorithms to distinguish moving targets from static clutter, as discussed by \cite{TODO_MTI_Algorithm}.
+\textit{Strengths:} These algorithms provide critical tactical data, such as target velocity vectors and heading, rather than just raw position points.
+\textit{Weaknesses:} They are traditionally mathematically intensive and rarely implemented in low-cost, hobby-grade embedded prototypes due to memory limitations.
+
+\textbf{Novelty of the Proposed Approach:}
+While existing works typically focus on either basic single-node scanning or high-end Edge processing independently, our project bridges this gap. The novelty of our proposed methodology lies in:
+\begin{enumerate}
+    \item \textbf{Secure Distributed Architecture:} Implementing a CRC-validated and encrypted communication protocol between the sensor node and the Edge device, ensuring telemetry integrity.
+    \item \textbf{Edge-Calculated MTI Vectors:} Adapting advanced MTI and TWS spatial correlation algorithms to run efficiently on an Edge device, allowing for the real-time rendering of dynamic velocity vectors on a custom PPI.
+    \item \textbf{Physical Raster Logging:} Introducing a tangible data logging mechanism (ESC/POS thermal printing) to output 1-bit monochrome bitmap snapshots of the radar map, a feature entirely absent in conventional embedded radar literature.
+\end{enumerate}
+\fi
+In this section, we review methodologies related to microcontroller-based
+spatial scanning, edge computing in IoT networks, lightweight cryptography
+for embedded nodes, and embedded target-tracking algorithms, highlighting
+the strengths and limitations of each approach to clarify the novelty of
+our proposed dual-node architecture.
+
+\textbf{Microcontroller-Based Spatial Scanning.}
+Low-cost radar prototypes built around Arduino and HC-SR04 ultrasonic sensors
+have been widely demonstrated for educational purposes
+\citep{AlShammari2019, Banzi2011}. These systems are highly accessible,
+low-cost, and power-efficient for static environment demonstration. However,
+because a single microcontroller handles motor actuation, sensor polling, and
+graphical rendering sequentially, they exhibit high inter-scan latency that
+makes real-time tracking of dynamic targets impractical. Our work adopts the
+US-100 ultrasonic sensor, which supports a dedicated UART ranging mode
+(triggered by a \texttt{0x55} command byte) that decouples the measurement
+cycle from GPIO timing constraints and yields more stable distance readings
+than the analogue trigger-echo scheme used in HC-SR04-based
+systems \citep{STMicro2018}.
+
+\textbf{Edge Computing and Task Offloading.}
+\citet{Shi2016} propose a framework for offloading computationally intensive
+tasks from constrained microcontrollers to nearby edge nodes, demonstrating
+significant latency reduction without cloud round-trips. NVIDIA Jetson-class
+devices have been shown to support real-time GPU-accelerated computer-vision
+pipelines suitable for this purpose \citep{Franklin2019}. A key weakness of
+distributed embedded systems, however, is the communication channel between
+nodes: standard unencrypted serial links are susceptible to passive
+interception and active injection attacks \citep{Bettayeb2020}.
+
+\textbf{Lightweight Cryptography for Embedded Nodes.}
+Several ciphers have been evaluated for constrained 8-bit and 32-bit
+microcontrollers \citep{Beaulieu2015, Dinu2015}. \citet{Wheeler1997} introduce
+the eXtended Tiny Encryption Algorithm (XTEA), a 32-round Feistel cipher
+operating on 64-bit blocks with a 128-bit key that requires no lookup tables
+and occupies fewer than 20 lines of C code, making it suitable for the
+ATmega328P's 2\,KB SRAM constraint. This avoids the timing side-channels
+associated with AES S-box implementations on hardware without constant-time
+memory access.
+
+\textbf{Target Tracking and Moving Target Indication.}
+Track-While-Scan algorithms have a rich theoretical basis in radar signal
+processing \citep{Blackman1986, Bar-Shalom2011}. \citet{Kuhn1955} propose the
+Hungarian algorithm for optimal assignment in the general data-association
+problem; for low-density hobby-scale scenarios, \citet{Streit1994} demonstrate
+that the simpler Nearest-Neighbor (NN) Euclidean threshold approach is
+computationally tractable and adequate when target density is low.
+
+\textbf{Novelty of the Proposed Approach.}
+While existing works typically address either basic single-node scanning or
+high-end edge processing independently, our project bridges this gap with
+three specific contributions: (1)~a CRC-16-validated and XTEA-encrypted
+serial protocol that provides telemetry integrity without exceeding the
+timing budget of an 8-bit sensor node; (2)~a Nearest-Neighbor Euclidean
+spatial correlation algorithm running on the Jetson Nano that derives
+motion vectors from consecutive half-PPI sweeps and renders them as
+directional arrows on a real-time PPI display; and (3)~an ESC/POS thermal
+printing pipeline that captures and thresholds the PPI framebuffer into a
+physical bitmap log --- an output mechanism entirely absent in existing
+embedded radar literature.
+
+
+
+\section{System Architecture}
+To address the complexity of our distributed topology, the system is separated into three distinct operational domains: the Sensor Node (Hard Real-Time), the Edge Node (Soft Real-Time / GPU Accelerated), and the Output Interfaces. The Arduino Uno utilizes FreeRTOS to manage deterministic sensor polling and motor actuation, transmitting encrypted packets via UART. The Jetson Nano ingests this stream, utilizing a custom C++ backend and Vulkan API pipeline to offload spatial correlation to the GPU, rendering a WWII-era 3D radar interface dynamically. Finally, the processed framebuffer is extracted and dispatched via direct USB serial connection to a thermal printer for physical logging.
+\documentclass{article}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit, backgrounds}
+
+\begin{figure}[htbp]
+\centering
+\resizebox{\textwidth}{!}{% Ekrana sığması için yeniden boyutlandırma
+\begin{tikzpicture}[
+    node distance=1.5cm and 2cm,
+    box/.style={rectangle, draw=black, thick, fill=white, minimum width=3.5cm, minimum height=1.2cm, align=center, font=\sffamily\small, rounded corners=2pt},
+    group/.style={rectangle, draw=black!60, dashed, thick, inner sep=15pt, rounded corners=5pt},
+    arrow/.style={->, thick, >=Stealth},
+    label/.style={font=\sffamily\footnotesize, align=center}
+]
+
+% --- NODE 1: SENSOR NODE (ARDUINO) ---
+\node[box] (us100) {US-100 \\ Ultrasonic Sensor};
+\node[box, below=0.8cm of us100] (servo) {MG90S \\ Servo Motor};
+
+\node[box, right=2cm of us100, yshift=-1cm] (arduino) {\textbf{Arduino Uno} \\ (FreeRTOS) \\ \vspace{0.1cm} \hrule \vspace{0.1cm} - Sensor Polling Task \\ - Servo PWM Task \\ - XTEA/CRC-16 Task};
+
+\draw[arrow] (us100) -- node[above, label] {Echo/Trig} (arduino.west |- us100);
+\draw[arrow] (arduino.west |- servo) -- node[above, label] {PWM} (servo);
+
+\node[group, fit=(us100) (servo) (arduino), label=above:\textbf{Node 1: Sensor Node (Hard Real-Time)}] (sensor_group) {};
+
+
+% --- NODE 2: EDGE COMPUTE NODE (JETSON NANO) ---
+\node[box, right=4cm of arduino] (jetson_core) {\textbf{NVIDIA Jetson Nano} \\ (C++20 \& Ubuntu)};
+\node[box, above=0.8cm of jetson_core] (vulkan) {\textbf{Vulkan API Pipeline} \\ \vspace{0.1cm} \hrule \vspace{0.1cm} - Compute Shaders (MTI) \\ - Fragment Shaders (3D)};
+
+\draw[arrow] (jetson_core) -- node[right, label] {Decrypted \\ Buffer} (vulkan);
+
+\node[group, fit=(vulkan) (jetson_core), label=above:\textbf{Node 2: Edge Compute Node (GPU Accelerated)}] (edge_group) {};
+
+
+% --- CONNECTION: UART ---
+\draw[arrow] (sensor_group.east |- jetson_core) -- 
+    node[above, label] {\textbf{UART (115200 baud)}} 
+    node[below, label] {12-byte Frames \\ XTEA Encrypted} 
+    (edge_group.west |- jetson_core);
+
+
+% --- OUTPUT INTERFACES ---
+\node[box, right=3cm of vulkan] (hdmi) {HDMI Display \\ (WWII 3D Radar UI)};
+\node[box, right=3cm of jetson_core] (printer) {58mm Thermal Printer \\ (Raster Bitmap Log)};
+
+\draw[arrow] (vulkan) -- node[above, label] {60+ FPS \\ Framebuffer} (hdmi);
+\draw[arrow] (jetson_core.east |- printer) -- 
+    node[above, label] {USB connection}
+    (printer);
+
+\node[group, fit=(hdmi) (printer), label=above:\textbf{Output Interfaces}] (output_group) {};
+
+\end{tikzpicture}
+}
+\caption{High-Level System Architecture of the Distributed Radar Simulation}
+\label{fig:system_architecture}
+\end{figure}
+
+\section{Stages}
+
+The development of this distributed radar simulation is conducted in five primary stages. All five team members contribute to each stage as detailed below.
+
+\textbf{Stage 1 --- RTOS-Based Secure Sensor Node (Arduino)} \\
+This stage overhauls the traditional "super-loop" architecture by implementing a Real-Time Operating System (FreeRTOS) to manage concurrent hardware tasks deterministically.
+\begin{itemize}
+    \item \textbf{Mete Akın Akdoğan:} Configures FreeRTOS task scheduling and implements the hardware PWM servo sweep task.
+    \item \textbf{Yiğit Sarıyar:} Develops the non-blocking UART polling task for the US-100 ultrasonic sensor to eliminate angular blind-spots.
+    \item \textbf{Meriç Kelemeden:} Implements the XTEA block cipher and manages inter-task communication (Queues/Semaphores) between the sensor and encryption tasks.
+    \item \textbf{Necla Akyol:} Designs the payload frame format and implements the CRC-16 computation task.
+    \item \textbf{Yusuf Celal Zeybek:} Develops an interrupt-driven (ISR) UART transmission pipeline to prevent CPU blocking during data dispatch.
+\end{itemize}
+
+\textbf{Stage 2 --- Edge Data Parsing \& Buffer Management (C++ Backend)} \\
+This stage handles receiving, validating, and buffering telemetry on the Jetson Nano, transitioning to a compiled, high-performance C++ backend.
+\begin{itemize}
+    \item \textbf{Mete Akın Akdoğan:} Implements the asynchronous C++ serial listener (utilizing POSIX \texttt{termios}) and the Start-of-Frame (SOF) synchronization state machine.
+    \item \textbf{Yiğit Sarıyar:} Designs the low-level memory allocation and modern C++ \texttt{std::vector} sweep buffer structures to stage spatial data.
+    \item \textbf{Meriç Kelemeden:} Integrates the C++ XTEA decryption headers into the edge application and writes unit validation tests using the Google Test framework.
+    \item \textbf{Necla Akyol:} Implements the CRC-16 verification pipeline and maintains the frame drop counter.
+    \item \textbf{Yusuf Celal Zeybek:} Develops the sweep-phase detection logic to classify forward and return passes before dispatching coordinates to the compute queue.
+\end{itemize}
+
+\textbf{Stage 3 --- Motion Vector Algorithm} \\
+This stage executes the spatial correlation to convert sweep data into motion vectors.
+\begin{itemize}
+    \item \textbf{Mete Akın Akdoğan:} Computes displacement ($\vec{d}$), speed ($v$), and heading ($\phi$) for matched pairs.
+    \item \textbf{Yiğit Sarıyar:} Implements the Nearest-Neighbor association algorithm.
+    \item \textbf{Meriç Kelemeden:} Handles duplicate-assignment resolution for overlapping targets.
+    \item \textbf{Necla Akyol:} Empirically calibrates the distance association threshold ($\tau$).
+    \item \textbf{Yusuf Celal Zeybek:} Handles the polar-to-Cartesian coordinate conversion.
+\end{itemize}
+
+\textbf{Stage 4 --- Vulkan-Accelerated 3D MTI Rendering} \\
+This stage replaces high-level 2D libraries with a low-level, high-performance C++20 and Vulkan API graphics pipeline.
+\begin{itemize}
+    \item \textbf{Mete Akın Akdoğan:} Implements the Vulkan instance, physical device selection, and swapchain configuration.
+    \item \textbf{Yiğit Sarıyar:} Develops the linear interpolation (lerp) algorithms to smoothly rotate the 3D camera and radar sweep-line at 60+ FPS.
+    \item \textbf{Meriç Kelemeden:} Writes Vulkan Compute Shaders to parallelize the Nearest-Neighbor (NN) spatial correlation directly on the GPU.
+    \item \textbf{Necla Akyol:} Creates the WWII-themed 3D models and handles coordinate transformations.
+    \item \textbf{Yusuf Celal Zeybek:} Implements Fragment Shaders to generate realistic CRT phosphor glow, target blip fade-out effects, and motion vector trails.
+\end{itemize}
+
+\textbf{Stage 5 --- Graphical Raster Logging} \\
+This stage integrates the thermal printer via direct cable to produce physical tactical logs.
+\begin{itemize}
+    \item \textbf{Mete Akın Akdoğan:} Captures the active Vulkan framebuffer to main memory.
+    \item \textbf{Yiğit Sarıyar:} Applies luminance thresholding to create a 1-bit monochrome bitmap.
+    \item \textbf{Meriç Kelemeden:} Handles ESC/POS serial transmission over USB and legibility testing.
+    \item \textbf{Necla Akyol:} Designs the physical print layout and metadata header.
+    \item \textbf{Yusuf Celal Zeybek:} Integrates asynchronous printing threads and measures print latency.
+\end{itemize}
+
+\section{Tools, Software, Hardware}
+\textbf{Hardware Components:}
+\begin{itemize}
+    \item 1$\times$ \textbf{Arduino Uno} -- Sensor/Actuator Node.
+    \item 1$\times$ \textbf{NVIDIA Jetson Nano} --- Edge Node. Its Maxwell GPU backend executes the Vulkan graphics, compute pipelines and .
+    \item 1$\times$ \textbf{US-100 Ultrasonic Distance Sensor}.
+    \item 1$\times$ \textbf{MG90S 180\textdegree{} Metal-Gear Micro Servo}.
+    \item 1$\times$ \textbf{58\,mm USB Thermal Receipt Printer} --- for physical raster tactical logging
+    \item 1$\times$ \textbf{HDMI display} for Jetson Nano 3D output.
+    \item \textbf{Miniature foam-block target objects} ($5\times5$\,cm cross-section) for experimental trials.
+    \item 1$\times$ \textbf{External Power Distribution Unit} A dedicated 5V/4A external power supply combined with a DC-DC buck converter. The servo motor power lines are strictly isolated from the Arduino logic pins to prevent voltage droops (brownouts) and electromagnetic interference (EMI) during rapid actuation.
+\end{itemize}
+
+\textbf{Software and Protocols:}
+\begin{itemize}
+    \item \textbf{Sensor Node (C++ / FreeRTOS):} AVR GCC compiler, FreeRTOS kernel for task scheduling, custom interrupt-driven UART drivers, XTEA cryptography, CRC-16 (CCITT polynomial \texttt{0x1021}).
+    \item \textbf{Edge Node (C++20 / Linux):} Vulkan SDK (for GPU-accelerated rendering and compute), GLM (OpenGL Mathematics for 3D vector transformations), GLFW (for window management), and POSIX \texttt{termios} for serial interfacing.
+    \item \textbf{UART:} 115200\,baud, 8N1, fixed 12-byte frames (Arduino $\leftrightarrow$ Jetson Nano).
+    \item \textbf{Direct Serial (USB):} Hardwired ESC/POS transport between the Jetson Nano and the thermal printer, ensuring high reliability in noisy environments.
+\end{itemize}
+
+\section{Experiments \& Results, Test Phases}
+
+All experiments will be conducted in a controlled tabletop arena: an
+80\,cm-radius semicircular surface at ambient temperature 20--25\textdegree C.
+Since this is a project proposal, no experimental results have been obtained
+yet. The following section outlines the planned test protocol and the
+quantitative metrics that will be used to evaluate system performance upon
+implementation.
+
+\textbf{Metric 1 --- UART Communication Integrity.}
+We will transmit 1000 consecutive UART frames ($\approx$5.5 full sweeps) and
+record the number of frames that fail the CRC-16 check. The test will be
+repeated twice: once without interference, and once with a 50\,cm copper wire
+deliberately routed alongside the UART cable to simulate EMI conditions. The
+drop counter maintained by the Jetson backend will be used for measurement.
+\textit{Target criterion:} CRC failure rate $\leq 0.1\%$ without interference;
+$\leq 1\%$ with the noise source present.
+
+\textbf{Metric 2 --- MTI Vector Accuracy.}
+A single foam-block target will be placed at 40\,cm and physically moved to
+each of three radial displacements ($+5$, $+10$, $+15$\,cm) between the
+forward and return sweeps. Ten trials will be run per displacement (30 trials
+total). The computed displacement magnitude $\|\vec{d}_i\|$ will be compared
+against physical ruler measurements to obtain the mean absolute error. A
+second test will place two targets simultaneously at 40\,cm and 70\,cm to
+verify that the NN algorithm correctly associates each target without
+false-matching (5 trials).
+\textit{Target criterion:} Mean absolute error $\leq 2\,\text{cm}$ across
+all 30 single-target trials; 100\% correct association in the multi-target
+test.
+
+\textbf{Metric 3 --- Print Latency and Image Fidelity.}
+The elapsed time from Vulkan framebuffer extraction to thermal printer
+transmission completion will be measured using \texttt{time.perf\_counter}
+over 10 consecutive print cycles. Five printed outputs will be visually
+inspected and each rendered blip and arrow will be scored on a binary
+legibility scale (pass/fail).
+\textit{Target criterion:} Total print latency $\leq 5\,\text{s}$, ensuring
+that printing does not delay the subsequent sweep by more than one inter-sweep
+interval; blip and arrow legibility $\geq 90\%$ across inspected prints.
+
+\section{Weekly Schedule}
+
+\begin{figure}
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{ganttchart}[
+    hgrid,
+    vgrid,
+    x unit=1.1cm,
+    y unit title=0.6cm,
+    y unit chart=0.65cm,
+    title label font=\small,
+    bar label font=\small,
+    group label font=\small\bfseries,
+    milestone label font=\small\itshape,
+    bar/.append style={fill=blue!40},
+    bar incomplete/.append style={fill=blue!15},
+    group/.append style={fill=black!60},
+    milestone/.append style={fill=red, shape=diamond},
+    title height=1
+]{1}{14}
+    \gantttitle{Week}{14} \\
+    \gantttitlelist{1,...,14}{1} \\
+
+    \ganttgroup{Stage 1 -- Secure Sensor Polling}{1}{6} \\
+    \ganttbar[name=hw]{HW Procurement \& Assembly}{1}{2} \\
+    \ganttbar[name=servo]{Akın: Servo sweep loop (PWM)}{3}{4} \\
+    \ganttbar[name=tof]{Yigit: US-100 integration}{3}{4} \\
+    \ganttbar[name=xtea]{Meric: XTEA cipher + benchmark}{4}{5} \\
+    \ganttbar[name=crc]{Necla: Frame format + CRC-16}{4}{5} \\
+    \ganttbar[name=uart]{Yusuf: UART pipeline + loopback test}{5}{6} \\
+    \ganttmilestone[name=m1]{Milestone: $\geq$99.9\% frame acceptance}{6} \\
+
+    \ganttgroup{Stage 2 -- Edge Data Parsing \& Buffer Management}{5}{8} \\
+    \ganttbar[name=rx]{Akın: POSIX termios serial listener}{5}{6} \\
+    \ganttbar[name=crcpy]{Yigit: std::vector sweep buffers}{6}{7} \\
+    \ganttbar[name=xteapy]{Meric: C++ XTEA integration + GTest}{6}{7} \\
+    \ganttbar[name=buf]{Necla: CRC-16 verification logic}{7}{8} \\
+    \ganttbar[name=phase]{Yusuf: Sweep-phase state machine}{7}{8} \\
+
+    \ganttgroup{Stage 3 -- MTI Algorithm}{8}{10} \\
+    \ganttbar[name=cart]{Akın: $\vec{d}$, $v$, $\phi$ computation + record array}{8}{9} \\
+    \ganttbar[name=nn]{Yigit: NN association + threshold $\tau$}{8}{9} \\
+    \ganttbar[name=dup]{Meric: Duplicate-assignment resolution}{9}{10} \\
+    \ganttbar[name=vec]{Necla: Empirical $\tau$ calibration}{9}{10} \\
+    \ganttbar[name=tau]{Yusuf: Polar-to-Cartesian conversion}{9}{10} \\
+    \ganttmilestone[name=m3]{Milestone: Mean error $\leq$2\,cm confirmed}{10} \\
+
+    \ganttgroup{Stage 4 -- Vulkan-Accelerated 3D Rendering}{7}{12} \\
+    \ganttbar[name=bg]{Akın: Vulkan instance \& swapchain}{7}{8} \\
+    \ganttbar[name=sweep]{Yigit: Camera lerp algorithms (60 FPS)}{8}{9} \\
+    \ganttbar[name=blip]{Meric: Compute Shaders for MTI}{9}{10} \\
+    \ganttbar[name=arrow]{Necla: WWII 3D models \& transforms}{10}{11} \\
+    \ganttbar[name=hud]{Yusuf: Fragment Shaders (CRT effects)}{11}{12} \\
+
+    \ganttgroup{Stage 5 -- Raster Logging}{11}{13} \\
+    \ganttbar[name=cap]{Akın: Vulkan framebuffer extraction}{11}{12} \\
+    \ganttbar[name=thr]{Yigit: Luminance to 1-bit thresholding}{11}{12} \\
+    \ganttbar[name=esc]{Meric: ESC/POS USB transmission}{12}{13} \\
+    \ganttbar[name=lay]{Necla: Print layout + metadata header block}{12}{13} \\
+    \ganttbar[name=async]{Yusuf: Async thread integration + latency test}{12}{13} \\
+
+    \ganttgroup{Integration \& Report}{13}{14} \\
+    \ganttbar[name=int]{Full system integration + metric evaluation}{13}{14} \\
+    \ganttmilestone[name=mf]{Milestone: Final report submitted}{14} \\
+
+    \ganttlink{hw}{servo}
+    \ganttlink{hw}{tof}
+    \ganttlink{xtea}{crc}
+    \ganttlink{uart}{rx}
+    \ganttlink{buf}{cart}
+    \ganttlink{phase}{nn}
+    \ganttlink{vec}{arrow}
+    \ganttlink{hud}{cap}
+    \ganttlink{async}{int}
+\end{ganttchart}
+}
+\caption{Gantt chart of the weekly project schedule. Each bar is labelled
+with the responsible team member. Red diamonds denote verifiable milestones
+with quantitative acceptance criteria.}
+\label{fig:gantt}
+\end{figure}
+
+\newpage
+\bibliographystyle{chicago}
+\bibliography{references}
+
+\end{document}
+
+

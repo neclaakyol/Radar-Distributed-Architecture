@@ -1,0 +1,65 @@
+#version 450
+
+struct Point {
+  float x_mm;
+  float y_mm;
+  uint sequence;
+  uint reserved;
+};
+
+struct Candidate {
+  uint previous_index;
+  uint current_index;
+  float distance_mm;
+  uint accepted;
+};
+
+layout(local_size_x = 64) in;
+
+layout(push_constant) uniform Params {
+  uint previous_count;
+  uint current_count;
+  float tau_mm;
+} params;
+
+layout(std430, binding = 0) readonly buffer PreviousPoints {
+  Point previous_points[];
+};
+
+layout(std430, binding = 1) readonly buffer CurrentPoints {
+  Point current_points[];
+};
+
+layout(std430, binding = 2) writeonly buffer Candidates {
+  Candidate candidates[];
+};
+
+void main() {
+  uint current_index = gl_GlobalInvocationID.x;
+  if (current_index >= params.current_count) {
+    return;
+  }
+
+  Point current = current_points[current_index];
+  float best_distance = params.tau_mm;
+  uint best_previous = 0;
+  bool found = false;
+
+  for (uint previous_index = 0; previous_index < params.previous_count;
+       ++previous_index) {
+    Point previous = previous_points[previous_index];
+    vec2 delta = vec2(current.x_mm - previous.x_mm,
+                     current.y_mm - previous.y_mm);
+    float distance_mm = length(delta);
+    if (distance_mm <= best_distance) {
+      best_distance = distance_mm;
+      best_previous = previous_index;
+      found = true;
+    }
+  }
+
+  candidates[current_index].previous_index = best_previous;
+  candidates[current_index].current_index = current_index;
+  candidates[current_index].distance_mm = best_distance;
+  candidates[current_index].accepted = found ? 1u : 0u;
+}

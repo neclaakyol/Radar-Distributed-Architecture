@@ -6,6 +6,12 @@
 #define BAUD_RATE 115200
 #define SYNC_BYTE_1 0xAA
 #define SYNC_BYTE_2 0x55
+#define SERVO_PIN 9
+#define HCSR04_TRIG_PIN 2
+#define HCSR04_ECHO_PIN 3
+#define HCSR04_TIMEOUT_US 30000UL
+#define SERVO_STEP_DELAY_MS 15
+#define MS_TO_TICKS_ROUNDED(ms) ((TickType_t)(((ms) + portTICK_PERIOD_MS - 1) / portTICK_PERIOD_MS))
 
 // --- Data Structures ---
 struct RawData {
@@ -55,11 +61,30 @@ uint16_t crc16_ccitt(const uint8_t *data, uint8_t length) {
     return crc;
 }
 
+uint16_t read_hcsr04_distance_mm() {
+  digitalWrite(HCSR04_TRIG_PIN, LOW);
+  delayMicroseconds(2);
+  digitalWrite(HCSR04_TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(HCSR04_TRIG_PIN, LOW);
+
+  unsigned long duration_us = pulseIn(HCSR04_ECHO_PIN, HIGH, HCSR04_TIMEOUT_US);
+  if (duration_us == 0) {
+    return 0;
+  }
+
+  unsigned long distance_mm = (duration_us * 343UL) / 2000UL;
+  if (distance_mm > 65535UL) {
+    return 65535;
+  }
+  return (uint16_t)distance_mm;
+}
+
 // --- Task 1: REAL Servo Actuation ---
 void TaskServoActuation(void *pvParameters) {
   (void) pvParameters;
   
-  radarServo.attach(9);
+  radarServo.attach(SERVO_PIN);
   bool sweepingForward = true;
 
   for (;;) {
@@ -72,28 +97,22 @@ void TaskServoActuation(void *pvParameters) {
     }
     
     radarServo.write(currentAngle);
-    vTaskDelay(1); // 1 tick = ~16ms
+    vTaskDelay(MS_TO_TICKS_ROUNDED(SERVO_STEP_DELAY_MS));
   }
 }
 
-// --- Task 2: MOCK Sensor Polling (Hybrid Mode) ---
+// --- Task 2: REAL Sensor Polling (HC-SR04 Trigger/Echo Mode) ---
 void TaskSensorPolling(void *pvParameters) {
   (void) pvParameters;
   RawData data;
 
   for (;;) {
-    // 1. Grab the REAL physical angle
     data.angle = currentAngle;
-    
-    // 2. Generate a MOCK distance
-    // Let's simulate a flat wall at 40cm (400mm) with a little bit of noise
-    data.distance = 400 + random(-10, 10); 
-    
-    // 3. Push to queue
+    data.distance = read_hcsr04_distance_mm();
+
     xQueueSend(rawDataQueue, &data, (TickType_t)5);
 
-    // Yield CPU (Simulate ~40ms US-100 sensor read time)
-    vTaskDelay(3); // 3 ticks = ~48ms
+    vTaskDelay(MS_TO_TICKS_ROUNDED(40));
   }
 }
 
@@ -147,6 +166,10 @@ void setup() {
   Serial.begin(BAUD_RATE);
   while (!Serial) { ; } 
 
+  pinMode(HCSR04_TRIG_PIN, OUTPUT);
+  pinMode(HCSR04_ECHO_PIN, INPUT);
+  digitalWrite(HCSR04_TRIG_PIN, LOW);
+
   rawDataQueue = xQueueCreate(5, sizeof(RawData));
   txQueue = xQueueCreate(5, sizeof(TelemetryFrame));
 
@@ -154,8 +177,7 @@ void setup() {
     xTaskCreate(TaskUARTDispatch, "UART", 85, NULL, 3, NULL);
     xTaskCreate(TaskSecurity, "Crypto", 120, NULL, 2, NULL); 
     
-    // We can drop the Sensor stack size back down since SoftwareSerial is gone!
-    xTaskCreate(TaskSensorPolling, "Sensor", 85, NULL, 1, NULL); 
+    xTaskCreate(TaskSensorPolling, "Sensor", 100, NULL, 1, NULL);
     xTaskCreate(TaskServoActuation, "Servo", 85, NULL, 0, NULL);
   }
 }

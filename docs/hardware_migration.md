@@ -12,7 +12,7 @@
 
 | Device | Signal | Arduino / Supply |
 | --- | --- | --- |
-| SG90 | Signal | D9 |
+| SG90 | Signal | D10 |
 | SG90 | VCC | External regulated 5V |
 | SG90 | GND | Shared ground with Arduino |
 | HC-SR04 | TRIG | D2 |

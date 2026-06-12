@@ -6,7 +6,7 @@
 #define BAUD_RATE 115200
 #define SYNC_BYTE_1 0xAA
 #define SYNC_BYTE_2 0x55
-#define SERVO_PIN 9
+#define SERVO_PIN 10
 #define HCSR04_TRIG_PIN 2
 #define HCSR04_ECHO_PIN 3
 #define HCSR04_TIMEOUT_US 30000UL

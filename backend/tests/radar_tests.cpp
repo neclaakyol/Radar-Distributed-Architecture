@@ -11,7 +11,6 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
-#include <optional>
 #include <utility>
 #include <vector>
 
@@ -20,15 +19,29 @@ namespace {
 using radar::RadarClock;
 
 void test_protocol_round_trip() {
-  const auto frame = radar::make_frame(90, 400);
+  const std::array<radar::SensorReading, radar::kNumSensors> readings = {{
+      {0, 90, 400},
+      {1, 45, 200},
+      {2, 30, 300},
+  }};
+  const auto frame = radar::make_frame(readings);
   assert(frame[0] == radar::kSyncByte1);
   assert(frame[1] == radar::kSyncByte2);
 
   const auto decoded = radar::decode_frame(frame, 7);
   assert(decoded.valid);
-  assert(decoded.point.sequence == 7);
-  assert(decoded.point.angle_deg == 90);
-  assert(decoded.point.distance_mm == 400);
+  assert(decoded.points[0].sequence == 7);
+  assert(decoded.points[0].sensor_id == 0);
+  assert(decoded.points[0].angle_deg == 90);
+  assert(decoded.points[0].distance_mm == 400);
+  assert(decoded.points[1].sequence == 8);
+  assert(decoded.points[1].sensor_id == 1);
+  assert(decoded.points[1].angle_deg == 45);
+  assert(decoded.points[1].distance_mm == 200);
+  assert(decoded.points[2].sequence == 9);
+  assert(decoded.points[2].sensor_id == 2);
+  assert(decoded.points[2].angle_deg == 30);
+  assert(decoded.points[2].distance_mm == 300);
 
   auto corrupt = frame;
   corrupt[4] ^= 0x55;
@@ -40,27 +53,38 @@ void test_parser_resync() {
   radar::FrameParser parser;
   const std::vector<std::uint8_t> garbage{0x01, 0x02, 0xAA, 0x00, 0xAA};
   for (std::uint8_t byte : garbage) {
-    assert(!parser.ingest(byte));
+    assert(parser.ingest(byte).empty());
   }
 
-  const auto frame = radar::make_frame(45, 1234);
-  std::optional<radar::TelemetryPoint> point;
+  const std::array<radar::SensorReading, radar::kNumSensors> readings = {{
+      {0, 45, 1234},
+      {1, 20, 500},
+      {2, 60, 600},
+  }};
+  const auto frame = radar::make_frame(readings);
+  std::vector<radar::TelemetryPoint> points;
   for (std::size_t i = 1; i < frame.size(); ++i) {
-    point = parser.ingest(frame[i]);
+    points = parser.ingest(frame[i]);
   }
 
-  assert(point);
-  assert(point->angle_deg == 45);
-  assert(point->distance_mm == 1234);
+  assert(!points.empty());
+  assert(points[0].angle_deg == 45);
+  assert(points[0].distance_mm == 1234);
   assert(parser.counters().valid_frames == 1);
   assert(parser.counters().sync_drops >= 3);
 
-  const auto timeout_frame = radar::make_frame(46, 0);
+  // Sensor 0 timeout (distance == 0); sensors 1 and 2 non-zero.
+  const std::array<radar::SensorReading, radar::kNumSensors> timeout_readings = {{
+      {0, 46, 0},
+      {1, 46, 200},
+      {2, 46, 300},
+  }};
+  const auto timeout_frame = radar::make_frame(timeout_readings);
   for (std::uint8_t byte : timeout_frame) {
-    point = parser.ingest(byte);
+    points = parser.ingest(byte);
   }
-  assert(point);
-  assert(point->distance_mm == 0);
+  assert(!points.empty());
+  assert(points[0].distance_mm == 0);
   assert(parser.counters().timeout_readings == 1);
 }
 
@@ -68,8 +92,14 @@ void test_replay_source() {
   const auto temp = std::filesystem::temp_directory_path() / "radar_replay_test.bin";
   {
     std::ofstream output(temp, std::ios::binary);
-    const auto a = radar::make_frame(10, 100);
-    const auto b = radar::make_frame(20, 200);
+    const std::array<radar::SensorReading, radar::kNumSensors> r_a = {{
+        {0, 10, 100}, {1, 10, 110}, {2, 10, 120}
+    }};
+    const std::array<radar::SensorReading, radar::kNumSensors> r_b = {{
+        {0, 20, 200}, {1, 20, 210}, {2, 20, 220}
+    }};
+    const auto a = radar::make_frame(r_a);
+    const auto b = radar::make_frame(r_b);
     output.write(reinterpret_cast<const char *>(a.data()),
                  static_cast<std::streamsize>(a.size()));
     output.write(reinterpret_cast<const char *>(b.data()),
@@ -84,11 +114,9 @@ void test_replay_source() {
     if (!byte) {
       continue;
     }
-    if (parser.ingest(*byte)) {
-      ++decoded_count;
-    }
+    decoded_count += static_cast<int>(parser.ingest(*byte).size());
   }
-  assert(decoded_count == 2);
+  assert(decoded_count == 6); // 2 frames × 3 sensors each
   std::filesystem::remove(temp);
 }
 

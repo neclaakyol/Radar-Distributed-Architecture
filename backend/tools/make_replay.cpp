@@ -19,7 +19,13 @@ std::uint16_t return_distance(int angle, int cycle) {
 
 void write_frame(std::ofstream &output, std::uint8_t angle,
                  std::uint16_t distance) {
-  const auto frame = radar::make_frame(angle, distance);
+  // Replay generates identical readings across all three sensors for each step.
+  const std::array<radar::SensorReading, radar::kNumSensors> readings = {{
+      {0, angle, distance},
+      {1, angle, distance},
+      {2, angle, distance},
+  }};
+  const auto frame = radar::make_frame(readings);
   output.write(reinterpret_cast<const char *>(frame.data()),
                static_cast<std::streamsize>(frame.size()));
 }

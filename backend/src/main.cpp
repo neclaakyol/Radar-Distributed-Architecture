@@ -138,12 +138,12 @@ std::thread start_ingest_thread(radar::ByteSource &source,
           continue;
         }
 
-        std::optional<radar::TelemetryPoint> point = parser.ingest(*byte);
+        auto points = parser.ingest(*byte);
         {
           std::lock_guard<std::mutex> lock(shared.mutex);
           shared.counters = parser.counters();
-          if (point) {
-            shared.points.push_back(*point);
+          for (const auto &p : points) {
+            shared.points.push_back(p);
           }
         }
         shared.cv.notify_one();

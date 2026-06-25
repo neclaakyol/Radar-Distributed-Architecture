@@ -30,6 +30,17 @@ SweepBuilder::ingest(const TelemetryPoint &telemetry,
   point.distance_mm = telemetry.distance_mm;
   point.timestamp = timestamp;
   point.sequence = telemetry.sequence;
+  point.sensor_id = telemetry.sensor_id;
+  return ingest(point);
+}
+
+std::optional<CompletedSweepEvent>
+SweepBuilder::ingest(const RadarPoint &point_in) {
+  if (point_in.distance_mm == 0) {
+    return std::nullopt;
+  }
+
+  RadarPoint point = point_in;
 
   if (!last_point_) {
     last_point_ = point;

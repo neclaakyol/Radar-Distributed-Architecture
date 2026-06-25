@@ -1,3 +1,4 @@
+#include "radar/geometry.hpp"
 #include "radar/render.hpp"
 
 #include <algorithm>
@@ -30,6 +31,24 @@ struct Point2 {
 Color phosphor(std::uint8_t intensity) {
   return Color{static_cast<std::uint8_t>(intensity / 4U), intensity,
                static_cast<std::uint8_t>(intensity / 3U), 255};
+}
+
+Color sensor_tint(std::uint8_t sensor_id) {
+  switch (sensor_id) {
+  case 0:
+    return Color{40, 255, 90, 255}; // main: green
+  case 1:
+    return Color{255, 190, 40, 255}; // left flank: amber
+  case 2:
+    return Color{60, 200, 255, 255}; // right flank: cyan
+  default:
+    return Color{255, 255, 255, 255};
+  }
+}
+
+Color dim(Color color) {
+  return Color{static_cast<std::uint8_t>(color.r / 3U), static_cast<std::uint8_t>(color.g / 3U),
+              static_cast<std::uint8_t>(color.b / 3U), color.a};
 }
 
 void put_pixel(RgbaFrame &frame, int x, int y, Color color) {
@@ -192,6 +211,23 @@ Point2 project(Point2 center, int radius, const RadarPoint &point,
                 center.y - static_cast<int>(std::round(std::sin(radians) * screen_radius))};
 }
 
+// Like project(), but interprets the point through its sensor's mount
+// (geometry.hpp) first, so points from all 3 physically distinct sensors
+// land at their correct position relative to one shared screen-fixed
+// center (the main sensor's world origin) instead of each being drawn as
+// if it were the main sensor.
+Point2 project_world(Point2 center, int radius, const RadarPoint &point,
+                     const SensorGeometry &geometry, double max_range_mm) {
+  const WorldPoint world = to_world(point, geometry);
+  const double range_from_origin_mm =
+      std::sqrt(world.world_x_mm * world.world_x_mm + world.world_y_mm * world.world_y_mm);
+  const double range_fraction = std::clamp(range_from_origin_mm / max_range_mm, 0.0, 1.0);
+  const double radians = world.world_angle_deg * kPi / 180.0;
+  const double screen_radius = range_fraction * static_cast<double>(radius);
+  return Point2{center.x + static_cast<int>(std::round(std::cos(radians) * screen_radius)),
+                center.y - static_cast<int>(std::round(std::sin(radians) * screen_radius))};
+}
+
 void draw_arrow(RgbaFrame &frame, Point2 from, Point2 to, Color color) {
   draw_line(frame, from, to, color);
   const double angle = std::atan2(static_cast<double>(to.y - from.y),
@@ -252,31 +288,39 @@ RgbaFrame SoftwareRenderer::render(const RenderState &state) const {
     if (point.distance_mm == 0) {
       continue;
     }
-    draw_filled_circle(frame, project(center, radius, point, max_range), 2,
-                       phosphor(70));
+    const Point2 p = project_world(center, radius, point, state.geometry, max_range);
+    draw_filled_circle(frame, p, 2, dim(sensor_tint(point.sensor_id)));
   }
 
   for (const RadarPoint &point : state.current_points) {
     if (point.distance_mm == 0) {
       continue;
     }
-    Point2 p = project(center, radius, point, max_range);
-    draw_filled_circle(frame, p, 3, phosphor(210));
+    const Point2 p = project_world(center, radius, point, state.geometry, max_range);
+    if (point.confirmation == Confirmation::Confirmed) {
+      draw_filled_circle(frame, p, 5, Color{255, 255, 255, 255});
+    }
+    draw_filled_circle(frame, p, 3, sensor_tint(point.sensor_id));
     draw_filled_circle(frame, p, 1, phosphor(255));
   }
 
   for (const MotionVector &vector : state.vectors) {
     const Point2 from =
-        project(center, radius, vector.previous.source, max_range);
-    const Point2 to = project(center, radius, vector.current.source, max_range);
-    draw_arrow(frame, from, to, phosphor(230));
+        project_world(center, radius, vector.previous.source, state.geometry, max_range);
+    const Point2 to =
+        project_world(center, radius, vector.current.source, state.geometry, max_range);
+    draw_arrow(frame, from, to, sensor_tint(vector.current.source.sensor_id));
   }
 
-  RadarPoint sweep_point;
-  sweep_point.angle_deg = state.sweep_angle_deg;
-  sweep_point.distance_mm = static_cast<std::uint16_t>(max_range);
-  draw_line(frame, center, project(center, radius, sweep_point, max_range),
-            phosphor(160));
+  for (std::size_t sensor_id = 0; sensor_id < state.sweep_angle_by_sensor.size(); ++sensor_id) {
+    RadarPoint sweep_point;
+    sweep_point.angle_deg = state.sweep_angle_by_sensor[sensor_id];
+    sweep_point.distance_mm = static_cast<std::uint16_t>(max_range);
+    sweep_point.sensor_id = static_cast<std::uint8_t>(sensor_id);
+    draw_line(frame, center,
+             project_world(center, radius, sweep_point, state.geometry, max_range),
+             dim(sensor_tint(sweep_point.sensor_id)));
+  }
 
   std::ostringstream line1;
   line1 << "SRC:" << state.source_name;
@@ -290,7 +334,9 @@ RgbaFrame SoftwareRenderer::render(const RenderState &state) const {
         << " CYCLE:" << state.stats.completed_cycles;
   std::ostringstream line4;
   line4 << "VEC:" << state.stats.vector_count
-        << " ANG:" << static_cast<int>(state.sweep_angle_deg);
+        << " ANG0:" << static_cast<int>(state.sweep_angle_by_sensor[0])
+        << " ANG1:" << static_cast<int>(state.sweep_angle_by_sensor[1])
+        << " ANG2:" << static_cast<int>(state.sweep_angle_by_sensor[2]);
 
   draw_text(frame, 12, 12, line1.str(), phosphor(135), 1);
   draw_text(frame, 12, 24, line2.str(), phosphor(135), 1);

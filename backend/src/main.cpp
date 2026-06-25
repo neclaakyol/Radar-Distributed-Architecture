@@ -385,9 +385,11 @@ int main(int argc, char **argv) {
         }
 
         // A combined frame renders whenever ANY one sensor completes a
-        // bidirectional cycle (their cadences are independent -- main's
-        // 0-120 deg sweep and the flanks' 0-180 deg sweeps don't finish in
-        // lockstep), using the freshest state from all 3 builders.
+        // bidirectional cycle. All three heads sweep the same 0-120 deg arc,
+        // but their cadences drift independently (sensor timeouts and missed
+        // steps shift each head's phase), so they don't stay in lockstep --
+        // hence the any-sensor-completes trigger, using the freshest state
+        // from all 3 builders.
         ++completed_cycles;
         render_state.stats.completed_cycles = completed_cycles;
         rebuild_combined_render_points();

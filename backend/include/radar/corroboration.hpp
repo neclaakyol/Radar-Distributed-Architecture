@@ -20,7 +20,7 @@ struct CorroborationConfig {
   // counted as "near a boundary edge", applied inward from each end.
   double main_boundary_band_deg = 15.0;
 
-  // Flank sensors (local range [0,180]): width, in degrees, of the band
+  // Flank sensors (local range [0,120]): width, in degrees, of the band
   // nearest local angle 0 counted as the inward/overlap-facing portion of
   // their sweep (see geometry.hpp's mount placeholders -- local angle 0 is
   // mounted at the boundary edge for both flanks by construction).

@@ -89,14 +89,13 @@ void write_overlap_scenario(std::ofstream &output, int cycles) {
   const radar::SensorGeometry geometry;
   std::array<ScanChannel, radar::kNumSensors> channels{{
       {0, 0, 120, 0},
-      {1, 0, 180, 0},
-      {2, 0, 180, 0},
+      {1, 0, 120, 0},
+      {2, 0, 120, 0},
   }};
 
-  // One round trip of the slowest channel (a flank, range 0-180) per
-  // "cycle" -- the main channel (range 0-120) completes roughly 1.5
-  // bidirectional cycles in that span, so the two never stay in lockstep,
-  // exactly as the real asynchronous sensor heads won't.
+  // One round trip of a channel (all three share the 0-120 range and advance
+  // together here) per "cycle" -- frames_per_cycle derives straight from the
+  // channel range, so this stays correct regardless of the bound.
   const int frames_per_cycle = 2 * (channels[1].max_angle - channels[1].min_angle);
   const int total_frames = cycles * frames_per_cycle;
 
@@ -189,11 +188,11 @@ int main(int argc, char **argv) {
       write_overlap_scenario(output, cycle_count);
     } else {
       for (int cycle = 0; cycle < cycle_count; ++cycle) {
-        for (int angle = 0; angle <= 180; ++angle) {
+        for (int angle = 0; angle <= 120; ++angle) {
           write_uniform_frame(output, static_cast<std::uint8_t>(angle),
                               forward_distance(angle, cycle));
         }
-        for (int angle = 179; angle >= 0; --angle) {
+        for (int angle = 119; angle >= 0; --angle) {
           write_uniform_frame(output, static_cast<std::uint8_t>(angle),
                               return_distance(angle, cycle));
         }

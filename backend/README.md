@@ -1,6 +1,10 @@
 # Radar Backend
 
-Portable C++20 backend for the HC-SR04/SG90 distributed radar system.
+Portable C++20 backend for the distributed 3-sensor ultrasonic radar system.
+
+For an end-to-end explanation of the system — firmware, wire protocol, backend
+pipeline, and the live Vulkan/PBM rendering — see
+[`docs/architecture.md`](../docs/architecture.md).
 
 ## Dependencies
 

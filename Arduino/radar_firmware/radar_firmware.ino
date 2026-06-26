@@ -1,14 +1,16 @@
 // =============================================================================
 //  Radar Node — Final Firmware
 // =============================================================================
-//  3 servo heads, each carrying an ultrasonic ranger, all sweeping the same
-//  0-120 degree arc. A single FreeRTOS coordinator reads the three sensors in
-//  round-robin order (main -> left -> right), batches one reading from each
-//  into a 16-byte payload, encrypts it as two XTEA blocks, frames it with sync
-//  bytes + CRC-16 (20 bytes total), and streams it to the Jetson over UART.
+//  3 servo heads, each carrying an ultrasonic ranger. The main head sweeps a
+//  0-120 degree arc; the two flank heads each sweep 0-180 degrees. A single
+//  FreeRTOS coordinator reads the three sensors in round-robin order
+//  (main -> left -> right), batches one reading from each into a 16-byte
+//  payload, encrypts it as two XTEA blocks, frames it with sync bytes + CRC-16
+//  (20 bytes total), and streams it to the Jetson over UART.
 //
-//  Sensors: 2x HC-SR04 + 1x HY-SRF05 (mode pin left unconnected -> trig/echo
-//  mode, identical timing to HC-SR04, so one read routine drives all three).
+//  Sensors: 1x HY-SRF05 (main, sensor_id 0) + 2x HC-SR04 (flanks, sensor_id
+//  1/2). The HY-SRF05 mode pin is left unconnected -> trig/echo mode, identical
+//  timing to HC-SR04, so one read routine drives all three.
 //  Board: Arduino Uno (FreeRTOS ticks off the Watchdog Timer, Servo library
 //  drives all three servos off Timer1 — no conflict).
 //
@@ -282,7 +284,8 @@ void setup() {
   Serial.begin(BAUD_RATE);
   while (!Serial) { ; }
 
-  // Channel 0 — main head, HC-SR04, 0-120° sweep (servo D10, trig D2, echo D3).
+  // Channel 0 — main head, HY-SRF05 (mode pin unconnected → trig/echo mode, same
+  // timing as HC-SR04). Origin sensor, 0-120° sweep.
   channels[0].id             = 0;
   channels[0].servoPin       = 12;
   channels[0].trigPin        = 6;
@@ -294,26 +297,26 @@ void setup() {
   channels[0].lastDistance   = 0;
   channels[0].lastTimeout    = false;
 
-  // Channel 1 — left head, HC-SR04, 0-120° sweep.
+  // Channel 1 — left flank head, HC-SR04, 0-180° sweep.
   channels[1].id             = 1;
   channels[1].servoPin       = 11;
   channels[1].trigPin        = 4;
   channels[1].echoPin        = 5;
   channels[1].angle          = 0;
   channels[1].minAngle       = 0;
-  channels[1].maxAngle       = 120;
+  channels[1].maxAngle       = 180;
   channels[1].sweepingForward = true;
   channels[1].lastDistance   = 0;
   channels[1].lastTimeout    = false;
 
-  // Channel 2 — right head, HY-SRF05 (mode pin unconnected → trig/echo mode, same timing as HC-SR04), 0-120°.
+  // Channel 2 — right flank head, HC-SR04, 0-180° sweep.
   channels[2].id             = 2;
   channels[2].servoPin       = 10;
   channels[2].trigPin        = 2;
   channels[2].echoPin        = 3;
   channels[2].angle          = 0;
   channels[2].minAngle       = 0;
-  channels[2].maxAngle       = 120;
+  channels[2].maxAngle       = 180;
   channels[2].sweepingForward = true;
   channels[2].lastDistance   = 0;
   channels[2].lastTimeout    = false;

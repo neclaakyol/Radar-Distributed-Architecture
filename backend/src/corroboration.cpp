@@ -71,10 +71,12 @@ void Corroborator::prune(std::deque<WorldPoint> &buffer, RadarClock::time_point 
 }
 
 WorldPoint Corroborator::update(const RadarPoint &point) {
+  const double max_range_mm = geometry_.mount_for(point.sensor_id).max_range_mm;
   if (point.distance_mm == 0 ||
-      static_cast<double>(point.distance_mm) > config_.max_valid_distance_mm) {
-    // Bad reading: leave confirmation untouched (Unchecked) and never let
-    // it become a corroboration target for another sensor.
+      static_cast<double>(point.distance_mm) > max_range_mm) {
+    // Bad reading (timeout, or beyond this sensor's max range): leave
+    // confirmation untouched (Unchecked) and never let it become a
+    // corroboration target for another sensor.
     return to_world(point, geometry_);
   }
 

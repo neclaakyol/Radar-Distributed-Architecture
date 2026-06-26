@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <sstream>
 #include <string>
+#include <utility>
 
 namespace radar {
 namespace {
@@ -28,45 +29,72 @@ struct Point2 {
 
 // --- Palette (dark radar background; everything else pops on top) ---
 constexpr Color kBackground{4, 6, 10, 255};
-constexpr Color kBorder{150, 152, 165, 255};   // coverage shield outline
-constexpr Color kSensor{235, 60, 60, 255};      // sensor markers (red)
+constexpr Color kPlaneBorder{170, 174, 190, 255};  // 80x140 cm workspace outline
+constexpr Color kGrid{20, 30, 26, 255};            // 10 cm reference grid
+constexpr Color kSensor{235, 60, 60, 255};         // sensor markers (red)
 constexpr Color kSensorRing{255, 120, 120, 255};
-constexpr Color kRay{236, 238, 248, 255};       // scan ray (white)
-constexpr Color kDot{60, 230, 95, 255};         // detected object (green)
-constexpr Color kDotConfirmed{255, 255, 255, 255};
-constexpr Color kArrow{170, 240, 120, 255};     // MTI motion arrow
+constexpr Color kCoverage{34, 52, 60, 255};        // per-sensor coverage wedge
+constexpr Color kRay{236, 238, 248, 255};          // live scan ray (white)
+constexpr Color kDotConfirmed{255, 255, 255, 255}; // confirmed-detection ring
+constexpr Color kArrow{170, 240, 120, 255};        // MTI motion arrow
 constexpr Color kLabel{150, 158, 165, 255};
 constexpr Color kHud{120, 150, 130, 255};
 
-// On-screen placement + 120 deg fan for one sensor, matching the user's
-// sketch: HY-SRF05 bottom-center sweeping up, two HC-SR04s on the left/right
-// sweeping inward. Screen angle convention: degrees CCW from +x, with +deg
-// pointing up (screen y grows downward, handled in dir_of()).
-//   screen_deg(local) = base_deg + sign * local_angle   (local in [0,120])
-struct SensorView {
-  Point2 anchor;
-  double base_deg;
-  double sign;
-  const char *label;
-};
-
-constexpr int kRayLength = 340; // screen px for a full-range (max_range) reading
-
-// Indexed by sensor_id (0,1 = HC-SR04 flanks, 2 = HY-SRF05 base).
-const std::array<SensorView, kNumSensors> kLayout{{
-    {{110, 250}, -54.0, 1.0, "HC-SR04"},   // sensor 0: left, fan opens right
-    {{690, 250}, 114.0, 1.0, "HC-SR04"},   // sensor 1: right, fan opens left
-    {{400, 440}, 30.0, 1.0, "HY-SRF05"},   // sensor 2: bottom, fan opens up
+// Per-sensor detection colors, indexed by sensor_id
+// (0 = main HY-SRF05, 1 = left flank, 2 = right flank).
+constexpr std::array<Color, kNumSensors> kSensorColor{{
+    {60, 230, 95, 255},   // main: green
+    {70, 200, 235, 255},  // left flank: cyan
+    {235, 120, 235, 255}, // right flank: magenta
 }};
 
-// Coverage-shield corners above the flank sensors (border drawing only).
-constexpr Point2 kCornerLeft{150, 70};
-constexpr Point2 kCornerRight{650, 70};
-constexpr Point2 kArcControl{400, 10}; // pulls the top edge into an arc
+const std::array<const char *, kNumSensors> kSensorLabel{{
+    "S0 HY-SRF05",
+    "S1 HC-SR04",
+    "S2 HC-SR04",
+}};
 
-std::pair<double, double> dir_of(double screen_deg) {
-  const double rad = screen_deg * kPi / 180.0;
-  return {std::cos(rad), -std::sin(rad)};
+Color dim(Color c, double f) {
+  return Color{static_cast<std::uint8_t>(c.r * f), static_cast<std::uint8_t>(c.g * f),
+               static_cast<std::uint8_t>(c.b * f), c.a};
+}
+
+// Maps world millimetres (origin = main sensor, +y into the scene) onto the
+// framebuffer with a single uniform scale (so the map is to-scale, no
+// distortion). The drawn world window covers the 80x140 cm plane plus a small
+// margin so the sensor row near y=0 isn't flush against the edge.
+struct Viewport {
+  double scale = 1.0;   // px per mm
+  double origin_sx = 0; // screen x of world (0,0)
+  double origin_sy = 0; // screen y of world (0,0)
+
+  Point2 to_screen(double wx, double wy) const {
+    return Point2{static_cast<int>(std::lround(origin_sx + wx * scale)),
+                  static_cast<int>(std::lround(origin_sy - wy * scale))};
+  }
+};
+
+Viewport make_viewport(std::uint32_t w, std::uint32_t h) {
+  const double world_x_min = -kPlaneWidthMm / 2.0 - 80.0;
+  const double world_x_max = kPlaneWidthMm / 2.0 + 80.0;
+  const double world_y_min = -140.0;             // a little below the sensor row
+  const double world_y_max = kPlaneDepthMm + 90.0;
+  const double margin = 14.0;
+
+  const double world_w = world_x_max - world_x_min;
+  const double world_h = world_y_max - world_y_min;
+  const double scale =
+      std::min((w - 2.0 * margin) / world_w, (h - 2.0 * margin) / world_h);
+
+  // Center the used area in the frame.
+  const double off_x = (w - world_w * scale) / 2.0;
+  const double off_y = (h - world_h * scale) / 2.0;
+
+  Viewport vp;
+  vp.scale = scale;
+  vp.origin_sx = off_x + (0.0 - world_x_min) * scale;
+  vp.origin_sy = off_y + (world_y_max - 0.0) * scale;
+  return vp;
 }
 
 void put_pixel(RgbaFrame &frame, int x, int y, Color color) {
@@ -133,21 +161,6 @@ void draw_ring(RgbaFrame &frame, Point2 center, int radius, Color color) {
         put_pixel(frame, center.x + x, center.y + y, color);
       }
     }
-  }
-}
-
-// Quadratic Bezier, used for the rounded top edge of the coverage shield.
-void draw_bezier(RgbaFrame &frame, Point2 p0, Point2 ctrl, Point2 p1, Color color) {
-  Point2 prev = p0;
-  constexpr int steps = 48;
-  for (int i = 1; i <= steps; ++i) {
-    const double t = static_cast<double>(i) / steps;
-    const double u = 1.0 - t;
-    const double x = u * u * p0.x + 2 * u * t * ctrl.x + t * t * p1.x;
-    const double y = u * u * p0.y + 2 * u * t * ctrl.y + t * t * p1.y;
-    const Point2 cur{static_cast<int>(std::round(x)), static_cast<int>(std::round(y))};
-    draw_line(frame, prev, cur, color);
-    prev = cur;
   }
 }
 
@@ -239,31 +252,34 @@ void draw_text(RgbaFrame &frame, int x, int y, std::string text, Color color, in
   }
 }
 
-double max_display_range(const RenderState &state) {
-  std::uint16_t max_distance = 1000;
-  auto scan = [&](const std::vector<RadarPoint> &points) {
-    for (const RadarPoint &point : points) {
-      max_distance = std::max(max_distance, point.distance_mm);
-    }
-  };
-  scan(state.history_points);
-  scan(state.current_points);
-  for (const MotionVector &vector : state.vectors) {
-    max_distance = std::max(max_distance, vector.current.source.distance_mm);
-    max_distance = std::max(max_distance, vector.previous.source.distance_mm);
-  }
-  return static_cast<double>(max_distance) * 1.1;
+// World direction (unit vector) a sensor points at for a given local angle.
+std::pair<double, double> world_dir(const SensorMount &mount, double local_angle_deg) {
+  const double rad =
+      (mount.angle_sign * local_angle_deg + mount.heading_offset_deg) * kPi / 180.0;
+  return {std::cos(rad), std::sin(rad)};
 }
 
-// Projects a (sensor, local angle, distance) reading into screen space along
-// that sensor's on-screen fan.
-Point2 plot(const SensorView &view, double local_angle, std::uint16_t distance_mm,
-            double max_range) {
-  const double frac = std::clamp(static_cast<double>(distance_mm) / max_range, 0.0, 1.0);
-  const auto [dx, dy] = dir_of(view.base_deg + view.sign * local_angle);
-  const double len = frac * kRayLength;
-  return Point2{view.anchor.x + static_cast<int>(std::round(dx * len)),
-                view.anchor.y + static_cast<int>(std::round(dy * len))};
+// Faint outline of a sensor's coverage wedge: the two boundary rays plus a
+// sampled arc at max range, so the operator can see where each sensor looks.
+void draw_coverage(RgbaFrame &frame, const Viewport &vp, const SensorMount &mount) {
+  const auto edge = [&](double local) {
+    const auto [dx, dy] = world_dir(mount, local);
+    return vp.to_screen(mount.offset_x_mm + mount.max_range_mm * dx,
+                        mount.offset_y_mm + mount.max_range_mm * dy);
+  };
+  const Point2 origin = vp.to_screen(mount.offset_x_mm, mount.offset_y_mm);
+  draw_line(frame, origin, edge(mount.sweep_min_deg), kCoverage);
+  draw_line(frame, origin, edge(mount.sweep_max_deg), kCoverage);
+
+  constexpr int steps = 48;
+  Point2 prev = edge(mount.sweep_min_deg);
+  for (int i = 1; i <= steps; ++i) {
+    const double t = static_cast<double>(i) / steps;
+    const Point2 cur =
+        edge(mount.sweep_min_deg + t * (mount.sweep_max_deg - mount.sweep_min_deg));
+    draw_line(frame, prev, cur, kCoverage);
+    prev = cur;
+  }
 }
 
 } // namespace
@@ -283,57 +299,85 @@ RgbaFrame SoftwareRenderer::render(const RenderState &state) const {
     frame.rgba[i + 3] = 255;
   }
 
-  const double max_range = max_display_range(state);
+  const Viewport vp = make_viewport(width_, height_);
+  const SensorGeometry &geometry = state.geometry;
+  const double half_w = kPlaneWidthMm / 2.0;
 
-  // --- Coverage border (shield through the 3 sensors + arched top) ---
-  draw_line_thick(frame, kCornerLeft, kLayout[0].anchor, kBorder);
-  draw_line_thick(frame, kLayout[0].anchor, kLayout[2].anchor, kBorder);
-  draw_line_thick(frame, kLayout[2].anchor, kLayout[1].anchor, kBorder);
-  draw_line_thick(frame, kLayout[1].anchor, kCornerRight, kBorder);
-  draw_bezier(frame, kCornerLeft, kArcControl, kCornerRight, kBorder);
-
-  // --- Per-sensor live scan ray (white), at each sensor's current angle ---
-  for (std::size_t sid = 0; sid < kLayout.size(); ++sid) {
-    const SensorView &view = kLayout[sid];
-    const auto [dx, dy] = dir_of(view.base_deg + view.sign * state.sweep_angle_by_sensor[sid]);
-    const Point2 tip{view.anchor.x + static_cast<int>(std::round(dx * kRayLength)),
-                     view.anchor.y + static_cast<int>(std::round(dy * kRayLength))};
-    draw_line_thick(frame, view.anchor, tip, kRay);
+  // --- 10 cm reference grid inside the plane ---
+  for (double x = -half_w; x <= half_w + 1.0; x += 100.0) {
+    draw_line(frame, vp.to_screen(x, 0.0), vp.to_screen(x, kPlaneDepthMm), kGrid);
+  }
+  for (double y = 0.0; y <= kPlaneDepthMm + 1.0; y += 100.0) {
+    draw_line(frame, vp.to_screen(-half_w, y), vp.to_screen(half_w, y), kGrid);
   }
 
-  // --- Detected objects (green dots); confirmed get a white ring ---
-  for (const RadarPoint &point : state.current_points) {
-    if (point.distance_mm == 0 || point.sensor_id >= kLayout.size()) {
+  // --- 80 x 140 cm workspace outline ---
+  const Point2 bl = vp.to_screen(-half_w, 0.0);
+  const Point2 br = vp.to_screen(half_w, 0.0);
+  const Point2 tl = vp.to_screen(-half_w, kPlaneDepthMm);
+  const Point2 tr = vp.to_screen(half_w, kPlaneDepthMm);
+  draw_line_thick(frame, bl, br, kPlaneBorder);
+  draw_line_thick(frame, br, tr, kPlaneBorder);
+  draw_line_thick(frame, tr, tl, kPlaneBorder);
+  draw_line_thick(frame, tl, bl, kPlaneBorder);
+
+  // --- Per-sensor coverage wedges (drawn first, faint, behind everything) ---
+  for (std::uint8_t sid = 0; sid < kNumSensors; ++sid) {
+    draw_coverage(frame, vp, geometry.mount_for(sid));
+  }
+
+  // --- Live scan ray (white) at each sensor's current angle ---
+  for (std::uint8_t sid = 0; sid < kNumSensors; ++sid) {
+    const SensorMount &mount = geometry.mount_for(sid);
+    const auto [dx, dy] = world_dir(mount, state.sweep_angle_by_sensor[sid]);
+    const Point2 origin = vp.to_screen(mount.offset_x_mm, mount.offset_y_mm);
+    const Point2 tip = vp.to_screen(mount.offset_x_mm + mount.max_range_mm * dx,
+                                    mount.offset_y_mm + mount.max_range_mm * dy);
+    draw_line_thick(frame, origin, tip, kRay);
+  }
+
+  // --- History points (dim, prior sweeps) ---
+  for (const RadarPoint &point : state.history_points) {
+    if (point.distance_mm == 0 || point.sensor_id >= kNumSensors) {
       continue;
     }
-    const Point2 p = plot(kLayout[point.sensor_id], point.angle_deg, point.distance_mm, max_range);
+    const WorldPoint w = to_world(point, geometry);
+    const Point2 p = vp.to_screen(w.world_x_mm, w.world_y_mm);
+    draw_filled_circle(frame, p, 1, dim(kSensorColor[point.sensor_id], 0.45));
+  }
+
+  // --- Current detections (bright); confirmed get a white ring ---
+  for (const RadarPoint &point : state.current_points) {
+    if (point.distance_mm == 0 || point.sensor_id >= kNumSensors) {
+      continue;
+    }
+    const WorldPoint w = to_world(point, geometry);
+    const Point2 p = vp.to_screen(w.world_x_mm, w.world_y_mm);
     if (point.confirmation == Confirmation::Confirmed) {
       draw_ring(frame, p, 5, kDotConfirmed);
     }
-    draw_filled_circle(frame, p, 3, kDot);
+    draw_filled_circle(frame, p, 3, kSensorColor[point.sensor_id]);
   }
 
   // --- MTI motion arrows (object movement between sweeps) ---
   for (const MotionVector &vector : state.vectors) {
-    const std::uint8_t sid = vector.current.source.sensor_id;
-    if (sid >= kLayout.size()) {
+    if (vector.current.source.sensor_id >= kNumSensors) {
       continue;
     }
-    const Point2 from = plot(kLayout[sid], vector.previous.source.angle_deg,
-                             vector.previous.source.distance_mm, max_range);
-    const Point2 to = plot(kLayout[sid], vector.current.source.angle_deg,
-                           vector.current.source.distance_mm, max_range);
-    draw_arrow(frame, from, to, kArrow);
+    const WorldPoint from_w = to_world(vector.previous.source, geometry);
+    const WorldPoint to_w = to_world(vector.current.source, geometry);
+    draw_arrow(frame, vp.to_screen(from_w.world_x_mm, from_w.world_y_mm),
+               vp.to_screen(to_w.world_x_mm, to_w.world_y_mm), kArrow);
   }
 
   // --- Sensor markers (red) on top, with labels ---
-  for (const SensorView &view : kLayout) {
-    draw_filled_circle(frame, view.anchor, 5, kSensor);
-    draw_ring(frame, view.anchor, 8, kSensorRing);
-    const std::string name = view.label;
-    draw_text(frame, view.anchor.x - text_width(name, 1) / 2, view.anchor.y + 14, name, kLabel, 1);
-    draw_text(frame, view.anchor.x - text_width("120 DEG", 1) / 2, view.anchor.y + 26,
-              "120 DEG", kLabel, 1);
+  for (std::uint8_t sid = 0; sid < kNumSensors; ++sid) {
+    const SensorMount &mount = geometry.mount_for(sid);
+    const Point2 marker = vp.to_screen(mount.offset_x_mm, mount.offset_y_mm);
+    draw_filled_circle(frame, marker, 5, kSensor);
+    draw_ring(frame, marker, 8, kSensorRing);
+    const std::string name = kSensorLabel[sid];
+    draw_text(frame, marker.x - text_width(name, 1) / 2, marker.y + 14, name, kLabel, 1);
   }
 
   // --- Compact HUD ---
@@ -348,6 +392,7 @@ RgbaFrame SoftwareRenderer::render(const RenderState &state) const {
         << " CYCLE:" << state.stats.completed_cycles;
   draw_text(frame, 12, 12, line1.str(), kHud, 1);
   draw_text(frame, 12, 24, line2.str(), kHud, 1);
+  draw_text(frame, 12, height_ - 16, "PLANE 80X140 CM  GRID 10 CM", kLabel, 1);
 
   return frame;
 }

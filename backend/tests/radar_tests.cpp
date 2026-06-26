@@ -255,8 +255,10 @@ void test_geometry_transform() {
   // Right flank mount is offset/heading-mirrored so that its local angle 0
   // lands exactly on the main sensor's local-angle-0 wedge boundary at the
   // same world point a matching main-sensor reading would reach.
+  // (Flank baseline is 400 mm, so a flank local-0 reading at distance d lands
+  // on the same world ray as a main local-0 reading at distance d + 400.)
   {
-    const auto right = radar::to_world(point(0, 850, 0, RadarClock::now(), 2), geometry);
+    const auto right = radar::to_world(point(0, 600, 0, RadarClock::now(), 2), geometry);
     const auto main_boundary =
         radar::to_world(point(0, 1000, 0, RadarClock::now(), 0), geometry);
     assert(std::abs(right.world_x_mm - main_boundary.world_x_mm) < 1.0);
@@ -295,12 +297,13 @@ void test_corroboration() {
 
   // Main local angle 0 (within the 15 deg boundary band, paired with
   // sensor 2) and right-flank local angle 0 (within the 30 deg inward
-  // band, paired with sensor 0) are mounted so that distances 1000 and 850
-  // respectively land on the exact same world point (see geometry.hpp's
-  // placeholder layout: the two offsets cancel out at heading 30 deg).
-  const auto main_in_band = point(0, 1000, 0, t0, 0);
-  const auto right_in_band = point(0, 850, 0, t0, 2);
-  const auto main_out_of_band = point(60, 1000, 0, t0, 0); // mid-wedge, no band
+  // band, paired with sensor 0) are mounted so that main distance 700 and
+  // flank distance 300 land on the exact same world point (the 400 mm flank
+  // baseline cancels out at heading 30 deg). Both are within their sensor's
+  // max range (main 800, flank 600).
+  const auto main_in_band = point(0, 700, 0, t0, 0);
+  const auto right_in_band = point(0, 300, 0, t0, 2);
+  const auto main_out_of_band = point(60, 700, 0, t0, 0); // mid-wedge, no band
 
   // Confirmed: paired sensor reported a geometrically consistent point
   // recently.
@@ -308,7 +311,7 @@ void test_corroboration() {
     radar::Corroborator corroborator(geometry);
     corroborator.update(right_in_band);
     const auto world =
-        corroborator.update(point(0, 1000, 0, t0 + std::chrono::milliseconds(100), 0));
+        corroborator.update(point(0, 700, 0, t0 + std::chrono::milliseconds(100), 0));
     assert(world.source.confirmation == radar::Confirmation::Confirmed);
   }
 
@@ -333,7 +336,7 @@ void test_corroboration() {
     radar::Corroborator corroborator(geometry);
     corroborator.update(right_in_band); // at t0
     const auto world = corroborator.update(
-        point(0, 1000, 0, t0 + std::chrono::milliseconds(600), 0)); // default window is 500ms
+        point(0, 700, 0, t0 + std::chrono::milliseconds(600), 0)); // default window is 500ms
     assert(world.source.confirmation == radar::Confirmation::Rejected);
   }
 
@@ -342,12 +345,12 @@ void test_corroboration() {
   {
     radar::Corroborator corroborator(geometry);
     auto bad = right_in_band;
-    bad.distance_mm = 9000; // beyond max_valid_distance_mm (4500)
+    bad.distance_mm = 9000; // beyond sensor 2's max range (600 mm)
     const auto bad_world = corroborator.update(bad);
     assert(bad_world.source.confirmation == radar::Confirmation::Unchecked);
 
     const auto world =
-        corroborator.update(point(0, 1000, 0, t0 + std::chrono::milliseconds(100), 0));
+        corroborator.update(point(0, 700, 0, t0 + std::chrono::milliseconds(100), 0));
     assert(world.source.confirmation == radar::Confirmation::Rejected);
   }
 

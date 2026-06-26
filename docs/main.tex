@@ -186,24 +186,34 @@ The proposed system is divided into three operational domains: the Sensor Node (
 \begin{minipage}{0.43\textwidth}
 \centering
 \small
-\textbf{Node 1: Sensor Node (Arduino Uno)}\\
-\textit{\scriptsize FreeRTOS Kernel}\\[4pt]
+\textbf{Node 1: Sensor Node (Arduino Uno)}\par
+\vspace{2pt}
+\textit{\scriptsize FreeRTOS Kernel}\par
+\vspace{4pt}
 \begin{tabular}{ccc}
 Main Head & Left Head & Right Head \\
 \scriptsize HC-SR04 & \scriptsize HC-SR04 & \scriptsize HY-SRF05 \\
 \scriptsize MG90S & \scriptsize MG90S & \scriptsize MG90S
-\end{tabular}\\[4pt]
-\textit{\scriptsize Round-Robin Poll $\rightarrow$ XTEA Encrypt $\rightarrow$ CRC-16}\\[6pt]
+\end{tabular}\par
+\vspace{4pt}
+\textit{\scriptsize Round-Robin Poll $\rightarrow$ XTEA Encrypt $\rightarrow$ CRC-16}\par
+\vspace{6pt}
 \hrule
 \vspace{4pt}
-$\Downarrow$\quad\textbf{UART / XTEA + CRC-16}\quad(38400 baud)
+$\Downarrow$\quad\textbf{UART / XTEA + CRC-16}\quad(38400 baud)\par
 \vspace{4pt}
-\hrule\\[6pt]
-\textbf{Node 2: Edge Node (Jetson Nano)}\\
-\textit{\scriptsize C++20 Backend / POSIX termios}\\[4pt]
-\textit{\scriptsize Decrypt $\rightarrow$ Frame Parse $\rightarrow$ MTI Engine}\\[4pt]
-\textbf{Vulkan Graphics Pipeline}\\
-\textit{\scriptsize Compute Shaders (NN) + Fragment Shaders (CRT)}\\[4pt]
+\hrule
+\vspace{6pt}
+\textbf{Node 2: Edge Node (Jetson Nano)}\par
+\vspace{2pt}
+\textit{\scriptsize C++20 Backend / POSIX termios}\par
+\vspace{4pt}
+\textit{\scriptsize Decrypt $\rightarrow$ Frame Parse $\rightarrow$ MTI Engine}\par
+\vspace{4pt}
+\textbf{Vulkan Graphics Pipeline}\par
+\vspace{2pt}
+\textit{\scriptsize Compute Shaders (NN) + Fragment Shaders (CRT)}\par
+\vspace{4pt}
 \begin{tabular}{cc}
 $\swarrow$ & $\searrow$ \\
 \textbf{HDMI Display} & \textbf{PBM Log Files}\\
@@ -513,7 +523,7 @@ Target Blocks & $5 \times 5$ cm foam-block & 3 \\
 % ============================================================================
 \section{Project Schedule \& Team Roles}
 \label{sec:schedule}
-The development timeline was divided into five stages over 14 weeks, with overlapping stages to allow for parallelism. Table~\ref{tab:gantt_summary} summarizes the stage timeline.
+The development timeline was divided into four stages over 16 weeks, with overlapping stages to allow for parallelism. Table~\ref{tab:gantt_summary} summarizes the stage timeline.
 
 \begin{table}[htbp]
 \caption{Development Stage Timeline}
@@ -522,62 +532,55 @@ The development timeline was divided into five stages over 14 weeks, with overla
 \toprule
 \textbf{Stage} & \textbf{Weeks} & \textbf{Focus} \\
 \midrule
-Stage 1: Secure Sensor Node & 1--6 & FreeRTOS, XTEA, CRC \\
-Stage 2: Edge Data Ingestion & 5--8 & C++ backend, parsing \\
-Stage 3: MTI Tracking Engine & 8--10 & NN association \\
-Stage 4: Vulkan Visualization & 7--12 & GPU pipeline, shaders \\
-Stage 5: PBM Logging & 11--14 & File logging pipeline \\
-Integration \& Report & 13--14 & System test, documentation \\
+Stage 1: Research \& Feasibility & 1--7 & Literature review, proposal \\
+Stage 2: Secure Sensor Node \& Modeling & 8--10 & FreeRTOS, XTEA, Simulink \\
+Stage 3: Edge Processing \& Visuals & 11--14 & MTI, PBM logging, Vulkan \\
+Stage 4: Integration, Testing \& Docs & 15--16 & Hardware testing, final report \\
 \bottomrule
 \end{tabular}
 \label{tab:gantt_summary}
 \end{center}
 \end{table}
 
-\subsection{Stage 1: Secure Sensor Node (Weeks 1--6)}
+\subsection{Stage 1: Research \& Feasibility (Weeks 1--7)}
+During the first phase, all team members collaborated on researching prior literature on Moving Target Indication (MTI), distributed embedded networks, and real-time processing architectures. 
 \begin{itemize}
-    \item \textbf{Mete Ak{\i}n Akdo\u{g}an:} Programmed the FreeRTOS scheduler, allocating task stacks and configuring servo PWM timing.
-    \item \textbf{Yi\u{g}it Sar{\i}yar:} Implemented the non-blocking polling routine for the ultrasonic sensors.
-    \item \textbf{Meri\c{c} Kelemeden:} Integrated the XTEA encryption routine and benchmarked timing.
-    \item \textbf{Necla Akyol:} Designed the packet formatting and CRC-16 calculation.
-    \item \textbf{Yusuf Celal Zeybek:} Developed the non-blocking, interrupt-driven UART transmission drivers.
+    \item \textbf{Mete Ak{\i}n Akdo\u{g}an:} Researched Vulkan rendering techniques and real-time compute shader performance.
+    \item \textbf{Yi\u{g}it Sar{\i}yar:} Explored nearest-neighbor data association filters for target velocity vector derivation.
+    \item \textbf{Meri\c{c} Kelemeden:} Studied the security and throughput characteristics of XTEA encryption under low-memory microcontrollers.
+    \item \textbf{Necla Akyol:} Analyzed round-robin scheduling algorithms for multi-head ultrasonic sensor arrays.
+    \item \textbf{Yusuf Celal Zeybek:} Analyzed non-blocking UART drivers and serial synchronization mechanisms.
 \end{itemize}
 
-\subsection{Stage 2: Edge Data Ingestion (Weeks 5--8)}
+\subsection{Stage 2: Secure Sensor Node \& Modeling (Weeks 8--10)}
+Stage 2 focused on developing the hard real-time firmware, telemetry encryption, and validation modeling.
 \begin{itemize}
-    \item \textbf{Mete Ak{\i}n Akdo\u{g}an:} Wrote the C++ serial listener using POSIX termios and the sync-word parsing state machine.
-    \item \textbf{Yi\u{g}it Sar{\i}yar:} Structured the circular sweep buffer vectors.
-    \item \textbf{Meri\c{c} Kelemeden:} Ported the XTEA decryption algorithms to C++20 and wrote validation tests.
-    \item \textbf{Necla Akyol:} Implemented backend CRC-16 check routines and frame counters.
-    \item \textbf{Yusuf Celal Zeybek:} Programmed the sweep boundary detection state machine.
+    \item \textbf{Yi\u{g}it Sar{\i}yar:} Configured the FreeRTOS task stacks and implemented the non-blocking sensor polling routine and basic backend listener.
+    \item \textbf{Yusuf Celal Zeybek:} Programmed the FreeRTOS task prioritization, queues, and interrupt-driven UART drivers.
+    \item \textbf{Mete Ak{\i}n Akdo\u{g}an:} Ported and optimized the XTEA encryption routine to run within the ATmega328P footprint.
+    \item \textbf{Necla Akyol:} Designed the packet framing structure, CRC-16 calculation, and MATLAB/Simulink telemetry validation model.
+    \item \textbf{Meri\c{c} Kelemeden:} Developed the Simulink motor dynamics and acoustic crosstalk simulations.
 \end{itemize}
 
-\subsection{Stage 3: MTI Tracking Engine (Weeks 8--10)}
+\subsection{Stage 3: Edge Processing \& Visuals (Weeks 11--14)}
+In this stage, the team focused on edge target tracking algorithms, file logging, and GPU visualization.
 \begin{itemize}
-    \item \textbf{Mete Ak{\i}n Akdo\u{g}an:} Implemented the target state structures and velocity vector computation.
-    \item \textbf{Yi\u{g}it Sar{\i}yar:} Developed the Nearest-Neighbor association filter.
-    \item \textbf{Meri\c{c} Kelemeden:} Resolved duplicate targets using distance-sorting.
-    \item \textbf{Necla Akyol:} Calibrated the distance tolerance parameter ($\tau = 80\text{ mm}$).
-    \item \textbf{Yusuf Celal Zeybek:} Wrote coordinate transformation math (polar to world Cartesian).
+    \item \textbf{Meri\c{c} Kelemeden:} Implemented compute shaders to parallelize the nearest-neighbor association logic on the GPU.
+    \item \textbf{Mete Ak{\i}n Akdo\u{g}an:} Coded the spatial nearest-neighbor data association engine on the edge backend.
+    \item \textbf{Yusuf Celal Zeybek:} Wrote the asynchronous PBM logging loop and serialization logic to avoid rendering stalls.
+    \item \textbf{Yi\u{g}it Sar{\i}yar:} Programmed the Vulkan compute pipeline, window management, and framebuffers.
+    \item \textbf{Necla Akyol:} Designed the WWII PPI layout and fragment shaders for CRT decay effects.
 \end{itemize}
 
-\subsection{Stage 4: Vulkan Visualization (Weeks 7--12)}
+\subsection{Stage 4: Integration, Testing \& Docs (Weeks 15--16)}
+The final phase involved integrating all hardware nodes, end-to-end system testing, and documentation.
 \begin{itemize}
-    \item \textbf{Mete Ak{\i}n Akdo\u{g}an:} Configured Vulkan swapchains, logical devices, and render passes.
-    \item \textbf{Yi\u{g}it Sar{\i}yar:} Wrote interpolation algorithms for camera movements.
-    \item \textbf{Meri\c{c} Kelemeden:} Wrote compute shaders to parallelize the Nearest-Neighbor search on the GPU.
-    \item \textbf{Necla Akyol:} Modeled the WWII-themed radar interface layout.
-    \item \textbf{Yusuf Celal Zeybek:} Programmed fragment shaders for CRT decay effects and glowing vector arrows.
+    \item \textbf{Meri\c{c} Kelemeden:} Coded target coordinate transformation and tracking velocity vectors.
+    \item \textbf{Necla Akyol:} Developed custom interrupt-driven UART drivers on the edge backend to coordinate scanning.
+    \item \textbf{Yi\u{g}it Sar{\i}yar:} Integrated target tracking vectors and UART coordination with physical hardware.
+    \item \textbf{Mete Ak{\i}n Akdo\u{g}an, Yi\u{g}it Sar{\i}yar, Meri\c{c} Kelemeden, Necla Akyol, Yusuf Celal Zeybek:} Jointly completed end-to-end hardware integration, validation testing, and project documentation.
 \end{itemize}
 
-\subsection{Stage 5: PBM Logging \& Integration (Weeks 11--14)}
-\begin{itemize}
-    \item \textbf{Mete Ak{\i}n Akdo\u{g}an:} Developed the Vulkan framebuffer memory capture loop.
-    \item \textbf{Yi\u{g}it Sar{\i}yar:} Programmed the 1-bit monochrome thresholding algorithm.
-    \item \textbf{Meri\c{c} Kelemeden:} Implemented the PBM file serialization and logs directory output pipeline.
-    \item \textbf{Necla Akyol:} Designed the PBM file naming scheme and cycle metadata structure.
-    \item \textbf{Yusuf Celal Zeybek:} Wrapped the file logging in an asynchronous thread to avoid rendering stalls.
-\end{itemize}
 
 % ============================================================================
 % 9. BUSINESS OPPORTUNITIES

@@ -348,18 +348,27 @@ int main(int argc, char **argv) {
       for (const radar::TelemetryPoint &telemetry : batch) {
         render_state.stats.protocol = protocol_counters;
 
-        if (telemetry.sensor_id >= radar::kNumSensors || telemetry.distance_mm == 0) {
+        if (telemetry.sensor_id >= radar::kNumSensors) {
           continue;
         }
 
-        // Per-sensor max range: a reading beyond this sensor's range is not
-        // shown on the map (and never enters its sweep or corroboration).
-        if (static_cast<double>(telemetry.distance_mm) >
-            config.geometry.mount_for(telemetry.sensor_id).max_range_mm) {
-          continue;
-        }
-
+        // The servo angle is always valid (it is the head's physical position),
+        // even when the reading is a timeout or out of range. Update the live
+        // scan ray for EVERY frame so the ray tracks the rotating head smoothly,
+        // instead of freezing whenever the sensor sees nothing in range -- which
+        // made the side sensors (mostly staring across empty space) look laggy
+        // and stuttery while only the main head, always hitting the scene, moved
+        // smoothly.
         render_state.sweep_angle_by_sensor[telemetry.sensor_id] = telemetry.angle_deg;
+
+        // A timeout (distance 0) or a reading beyond this sensor's range is not
+        // a detection: it is not plotted and never enters the sweep or
+        // corroboration. (The ray above has already advanced.)
+        if (telemetry.distance_mm == 0 ||
+            static_cast<double>(telemetry.distance_mm) >
+                config.geometry.mount_for(telemetry.sensor_id).max_range_mm) {
+          continue;
+        }
 
         radar::RadarPoint built_point;
         built_point.angle_deg = telemetry.angle_deg;

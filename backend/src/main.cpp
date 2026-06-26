@@ -400,14 +400,7 @@ int main(int argc, char **argv) {
                   << protocol_counters.valid_frames << " valid frames\n";
 
         if (!config.no_render) {
-#if RADAR_HAS_VULKAN
-          radar::RgbaFrame frame =
-              vulkan_renderer && vulkan_renderer->available()
-                  ? vulkan_renderer->render(render_state)
-                  : software_renderer.render(render_state);
-#else
-          radar::RgbaFrame frame = software_renderer.render(render_state);
-#endif
+          const radar::RgbaFrame frame = software_renderer.render(render_state);
           const std::filesystem::path output =
               pbm_path(config.log_dir, completed_cycles);
           radar::write_pbm(output, frame, config.threshold);
@@ -416,6 +409,19 @@ int main(int argc, char **argv) {
       }
 
       render_state.stats.protocol = protocol_counters;
+
+#if RADAR_HAS_VULKAN
+      // Live on-screen refresh, once per loop tick (~16 ms) regardless of how
+      // many points arrived, so the sweep animates in real time. Closing the
+      // window stops the app.
+      if (vulkan_renderer && vulkan_renderer->available()) {
+        if (vulkan_renderer->window_should_close()) {
+          g_running = false;
+        }
+        const radar::RgbaFrame live = software_renderer.render(render_state);
+        vulkan_renderer->present(live);
+      }
+#endif
 
       if (done && batch.empty()) {
         break;

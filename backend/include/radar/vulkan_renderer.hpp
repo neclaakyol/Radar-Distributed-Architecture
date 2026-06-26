@@ -14,7 +14,18 @@ public:
 
   bool available() const;
   std::string status() const;
+
+  // CPU-renders the state into an RgbaFrame (used for PBM export). Window
+  // events are pumped separately via window_should_close().
   RgbaFrame render(const RenderState &state);
+
+  // Presents an already-rendered frame to the Vulkan swapchain window. No-op
+  // when the Vulkan present path is unavailable (headless / setup failure).
+  void present(const RgbaFrame &frame);
+
+  // Pumps window events and reports whether the user asked to close the window.
+  // Returns false when there is no live window.
+  bool window_should_close();
 
 private:
   struct Impl;

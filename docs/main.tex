@@ -108,7 +108,7 @@
 % ABSTRACT
 % ============================================================================
 \begin{abstract}
-This paper presents a secure, distributed cyber-physical architecture for real-time environment scanning and Moving Target Indication (MTI). Traditional single-node embedded radar configurations suffer from severe processing bottlenecks, where motor actuation, sensor polling, and graphical rendering executed in a single sequential super-loop introduce latency and create angular blind spots. We resolve these limitations by partitioning tasks across a distributed network consisting of a hard real-time sensor node (Arduino Uno governed by FreeRTOS) and a GPU-accelerated edge node (NVIDIA Jetson Nano running a compiled C++20 backend). The sensor node acts as a mechanical scanning unit, driving a three-channel round-robin sensor array (main, left, and right heads scanning overlapping arcs) and sending encrypted telemetry packets. Security is enforced over the serial link using a custom protocol that implements dual-block eXtended Tiny Encryption Algorithm (XTEA) encryption and a 16-bit CRC CCITT validation over 20-byte frames. The edge node decrypts the stream, applies Nearest-Neighbor Euclidean spatial data association to derive target velocity vectors, and renders a WWII-era Plan Position Indicator (PPI) interface at 60+ FPS using the Vulkan API. At the end of each sweep cycle, the PPI framebuffer is thresholded to a 1-bit monochrome image and saved as a PBM (Portable Bitmap) file to the logs directory for persistent record-keeping. Additionally, an earlier single-channel stage of the design was validated using a multi-rate MATLAB/Simulink model that simulates physical scene dynamics, serial link dropouts, and noise. The system is evaluated against communication drop, tracking accuracy, and logging latency criteria, with the measurement methodology and pass/fail thresholds for each defined in the evaluation.
+This paper presents a secure, distributed cyber-physical architecture for real-time environment scanning and Moving Target Indication (MTI). Traditional single-node embedded radar configurations suffer from severe processing bottlenecks, where motor actuation, sensor polling, and graphical rendering executed in a single sequential super-loop introduce latency and create angular blind spots. We resolve these limitations by partitioning tasks across a distributed network consisting of a hard real-time sensor node (Arduino Uno governed by FreeRTOS) and a GPU-accelerated edge node (NVIDIA Jetson Nano running a compiled C++20 backend). The sensor node acts as a mechanical scanning unit, driving a three-channel round-robin sensor array (main, left, and right heads scanning overlapping arcs) and sending encrypted telemetry packets. Security is enforced over the serial link using a custom protocol that implements dual-block eXtended Tiny Encryption Algorithm (XTEA) encryption and a 16-bit CRC-CCITT integrity check within a 20-byte frame format. The edge node decrypts the stream, applies Nearest-Neighbor Euclidean spatial data association to derive target velocity vectors, and renders a WWII-era Plan Position Indicator (PPI) interface at 60+ FPS using the Vulkan API. At the end of each sweep cycle, the PPI framebuffer is thresholded to a 1-bit monochrome image and saved as a PBM (Portable Bitmap) file to the logs directory for persistent record-keeping. Additionally, an earlier single-channel stage of the design---one servo sweeping a single ultrasonic head---was prototyped as a multi-rate MATLAB/Simulink model capturing physical scene dynamics, serial link dropouts, and noise, marking a progression milestone toward the three-channel hardware build. The system is evaluated against communication drop and logging latency criteria, with the measurement methodology and pass/fail thresholds for each defined in the evaluation.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -129,11 +129,11 @@ To address this, we propose a distributed cyber-physical architecture that separ
 
 The communication channel between the two nodes is bridged via an interrupt-driven UART interface. Since unsecure serial lines are susceptible to electromagnetic interference (EMI) and malicious injection, we implement a secure, framed communication protocol. Every 20-byte transmission frame contains 16 bytes of payload encrypted using the eXtended Tiny Encryption Algorithm (XTEA) in Electronic Codebook (ECB) mode, validated with a 16-bit Cyclic Redundancy Check (CRC-16).
 
-On the edge node, a custom C++20 backend executes the spatial correlation. The system maps the local coordinate spaces of the three sensors into a unified world coordinate frame. Target confirmation in the overlapping boundary regions of the sensors is cross-verified using a Nearest-Neighbor Euclidean data association filter. Detections confirmed across sweeps are rendered as dynamic velocity vectors (arrows) on a 3D PPI display. To achieve high-fidelity rendering, the display is built using the Vulkan API, implementing custom fragment shaders that emulate WWII-era CRT phosphor glow and target blip fade-out. For persistent logging, the edge node captures the Vulkan framebuffer at the end of each sweep cycle, converts it to a 1-bit monochrome bitmap, and saves the result as a PBM (Portable Bitmap) file to the logs directory, maintaining a structured archive of each scan cycle's spatial snapshot.
+On the edge node, a custom C++20 backend executes the spatial correlation. The system maps the local coordinate spaces of the three sensors into a unified world coordinate frame. Target confirmation in the overlapping boundary regions of the sensors is cross-verified using a Nearest-Neighbor Euclidean data association filter. Detections confirmed across sweeps are rendered as dynamic velocity vectors (arrows) on a 2D PPI display. To achieve high-fidelity rendering, the display is built using the Vulkan API, implementing custom fragment shaders that emulate WWII-era CRT phosphor glow and target blip fade-out. For persistent logging, the edge node captures the Vulkan framebuffer at the end of each sweep cycle, converts it to a 1-bit monochrome bitmap, and saves the result as a PBM (Portable Bitmap) file to the logs directory, maintaining a structured archive of each scan cycle's spatial snapshot.
 
-As an early step in the project's progression, we built a programmatic MATLAB/Simulink model of a single-channel version of the system to prove the architectural concepts under different signal-to-noise ratios. This model replicates the multi-rate behavior of the pipeline, the XTEA encryption/decryption, the CRC verification, the serial channel dropouts, the MTI spatial math, and an end-of-cycle hardcopy logging path that later evolved into the PBM file logger.
+As an early step in the project's progression, we built a programmatic MATLAB/Simulink model of a single-channel version of the system to prove the architectural concepts under different signal-to-noise ratios. This model replicates the multi-rate behavior of the pipeline, the XTEA encryption/decryption, the CRC verification, the serial channel dropouts, the MTI spatial math, and the PPI rendering of tracked targets.
 
-The remainder of this paper is organized as follows: Section~\ref{sec:problem} defines the four core problems. Section~\ref{sec:litreview} surveys related literature. Section~\ref{sec:architecture} details the system architecture and implementation across all subsystems. Section~\ref{sec:simulink} describes the MATLAB/Simulink validation model. Section~\ref{sec:evaluation} presents experimental evaluation results. Section~\ref{sec:schedule} outlines the project schedule and team roles. Section~\ref{sec:business} discusses business opportunities and competitive analysis. Section~\ref{sec:conclusion} concludes the paper with future directions.
+The remainder of this paper is organized as follows: Section~\ref{sec:problem} defines the four core problems. Section~\ref{sec:litreview} surveys related literature. Section~\ref{sec:architecture} details the system architecture and implementation across all subsystems. Section~\ref{sec:simulink} describes an earlier single-channel MATLAB/Simulink prototype stage in the project's progression. Section~\ref{sec:evaluation} defines the experimental evaluation methodology. Section~\ref{sec:specs} lists the hardware and software specifications. Section~\ref{sec:schedule} outlines the project schedule and team roles. Section~\ref{sec:business} discusses business opportunities and competitive analysis. Section~\ref{sec:conclusion} concludes the paper with future directions.
 
 % ============================================================================
 % 2. PROBLEM DEFINITION
@@ -403,9 +403,9 @@ If $Y$ is greater than or equal to a user-defined threshold (default \texttt{128
 The file write is wrapped in an asynchronous thread to prevent blocking the main rendering loop. This ensures that the Vulkan pipeline continues to render at 60+ FPS while the logging operation proceeds in the background.
 
 % ============================================================================
-% 5. MATLAB/SIMULINK SIMULATION
+% 5. EARLIER PROGRESSION STAGE: SINGLE-CHANNEL MATLAB/SIMULINK PROTOTYPE
 % ============================================================================
-\section{MATLAB/Simulink Simulation}
+\section{Earlier Progression Stage: Single-Channel MATLAB/Simulink Prototype}
 \label{sec:simulink}
 To de-risk the architecture before committing to the final hardware, we first developed a multi-rate Simulink model using a programmatic script (\texttt{build\_radar\_model.m}). This model captures an earlier milestone in the project's progression: a \emph{single}-channel pipeline in which one servo sweeps a $0$--$180^\circ$ arc feeding a single ultrasonic head through the complete secure-telemetry chain. It validated the core building blocks---XTEA framing, CRC-16 integrity, channel noise injection, and Nearest-Neighbor tracking---that were subsequently scaled up to the three-channel, 20-byte hardware firmware described in Section~\ref{sec:architecture}. The model is constructed entirely through MATLAB API calls (e.g., \texttt{add\_block}, \texttt{add\_line}, \texttt{set\_param}), ensuring full reproducibility without manual GUI manipulation. Fig.~\ref{fig:simulink_arch} shows the dataflow architecture of this prototype stage.
 
@@ -426,9 +426,9 @@ $\downarrow$ \scriptsize Sync + Ciphertext + CRC-16 \\ \hline
 $\downarrow$ \scriptsize Corrupted Stream \\ \hline
 \textbf{Backend Parser} \\ \scriptsize XTEA Decrypt + CRC Check \\ \hline
 $\downarrow$ \scriptsize Decrypted Points \\ \hline
-\textbf{MTI Engine} \\ \scriptsize NN Tracking \& PPI Render \\ \hline
-$\downarrow$ \scriptsize Visual Framebuffer \\ \hline
-\textbf{Virtual Printer} \\ \scriptsize ESC/POS thermal receipt (PNG) \\ \hline
+\textbf{MTI Engine} \\ \scriptsize NN Tracking \\ \hline
+$\downarrow$ \scriptsize Tracked Targets \\ \hline
+\textbf{PPI Renderer} \\ \scriptsize Radar scope image \\ \hline
 \end{tabular}
 }}
 \caption{MATLAB/Simulink model dataflow architecture.}
@@ -449,32 +449,26 @@ The channel model (\texttt{radar\_channel.m}) introduces two types of impairment
 \end{enumerate}
 
 \subsection{Backend Parser Block}
-The parser performs XTEA decryption and CRC-16 verification on received frames. Frames failing the CRC check are discarded, and the drop count is logged. Successfully parsed frames yield three sensor readings that are passed to the MTI engine.
+The parser performs XTEA decryption and CRC-16 verification on received frames. Frames failing the CRC check are discarded, and the drop count is logged. Successfully parsed frames yield the single-head sensor reading that is passed to the MTI engine.
 
 \subsection{MTI Engine}
 The MTI block (\texttt{radar\_mti\_step.m}) implements the Nearest-Neighbor association algorithm described in Section~\ref{subsec:mti}. It maintains a history buffer of previous sweep detections, computes pairwise Euclidean distances, and associates current targets with their nearest historical match within the tolerance $\tau$. The resulting displacement vectors are logged and passed to the PPI renderer.
 
-\subsection{Virtual Thermal Printer}
-At this stage of the project, persistent logging was prototyped as a hardcopy receipt rather than the PBM framebuffer archive adopted later. The virtual printer (\texttt{radar\_virtual\_printer.m}) decodes an ESC/POS byte stream---the same command set a 58~mm thermal printer would consume---and renders each sweep cycle as a receipt image saved to the simulated \texttt{prints/} directory. This validated the raster-encoding and end-of-cycle logging path in software before the design pivoted to the Vulkan-framebuffer PBM logger of Section~\ref{subsec:vulkan}.
+\subsection{PPI Rendering}
+The final block renders the tracked targets onto a Plan Position Indicator (PPI) scope image---a top-down radar view that places each detection and its velocity vector at its world coordinates. This software PPI output is the direct predecessor of the Vulkan-rendered radar display on the edge node (Section~\ref{subsec:vulkan}).
 
 % ============================================================================
 % 6. EXPERIMENTAL EVALUATION
 % ============================================================================
 \section{Experimental Evaluation}
 \label{sec:evaluation}
-The system is evaluated against three quantitative performance metrics, all in a controlled tabletop arena: an 80~cm-radius semicircular surface at ambient temperature 20--25$^\circ$C. This section defines the measurement procedure, instrumentation, and pass/fail criterion for each metric; the measured results are reported once collected through the procedures described below.
+The system is evaluated against two quantitative performance metrics, all in a controlled tabletop arena: an 80~cm-radius semicircular surface at ambient temperature 20--25$^\circ$C. This section defines the measurement procedure, instrumentation, and pass/fail criterion for each metric; the measured results are reported once collected through the procedures described below.
 
 \subsection{Metric 1: UART Communication Integrity}
 To assess the robustness of the custom communication protocol, the frame drop rate is measured over a continuous 1000-frame transmission under normal bench operation, with the three servos actively sweeping and all three sensors polling in round-robin. The backend maintains separate counters for valid frames, CRC-16 failures, and sync-word losses and reports their totals, so the drop rate is computed directly as $(\text{CRC drops} + \text{sync drops}) / (\text{valid} + \text{CRC drops} + \text{sync drops})$. The design criterion is a frame drop rate $\le 1\%$.
 
-\subsection{Metric 2: MTI Vector Accuracy}
-The tracking precision of the Nearest-Neighbor spatial association is evaluated by moving a $5 \times 5\text{ cm}$ target block to known radial displacements ($+5\text{ cm}$, $+10\text{ cm}$, and $+15\text{ cm}$) between sweep cycles at a range of $40\text{ cm}$. For each step, the displacement magnitude computed by the MTI engine---emitted per cycle by the backend---is compared against the known physical displacement, and the mean absolute error is taken over repeated trials. The association tolerance $\tau$ is set above the largest tested step so that every displacement is matched. A multi-target case, with obstacles placed at $40\text{ cm}$ and $70\text{ cm}$ simultaneously, is used to check for cross-target mismatches. The design criterion is a mean absolute displacement error $\le 2\text{ cm}$.
-
-\subsection{Metric 3: PBM Logging Latency and Image Legibility}
+\subsection{Metric 2: PBM Logging Latency and Image Legibility}
 The per-cycle logging overhead is measured from the start of framebuffer capture to the completion of the PBM file write to the \texttt{logs/} directory, timed in the backend around the write path. The saved PBM frames are additionally inspected to confirm that target blips, coordinate scales, and velocity arrows are rendered legibly. The design criterion is that the logging latency remains within one inter-sweep interval (target budget $\le 5.0\text{ s}$) and that every saved frame is legible.
-
-\subsection{Simulation Model Validation}
-The earlier single-channel Simulink prototype shares its XTEA framing, CRC-16, and Nearest-Neighbor tracking blocks with the final design, so it provides a reproducible, hardware-independent cross-check of the frame drop rate and the displacement error. Comparing these simulated quantities against the corresponding hardware measurements serves to validate the model as a design tool.
 
 % ============================================================================
 % 7. HARDWARE AND SOFTWARE SPECIFICATIONS
@@ -501,7 +495,6 @@ HDMI Display & For Jetson Nano 2D PPI output & 1 \\
 Breadboard Supply & 5V / 3A regulated DC adapter & 1 \\
 Jetson Nano Supply & 5V / 4A DC barrel-jack adapter & 1 \\
 Arduino Supply & 9V battery & 1 \\
-Target Blocks & $5 \times 5$ cm foam-block & 3 \\
 \bottomrule
 \end{tabular}
 \label{tab:hardware}
@@ -514,7 +507,6 @@ Target Blocks & $5 \times 5$ cm foam-block & 3 \\
     \item \textit{Sensor Node:} AVR GCC compiler, FreeRTOS kernel, custom interrupt-driven UART drivers, XTEA cryptography, CRC-16 (CCITT polynomial \texttt{0x1021}).
     \item \textit{Edge Node:} C++20 with POSIX \texttt{termios}, Vulkan SDK (GPU rendering and compute), GLM (OpenGL Mathematics for 3D vector transformations), GLFW (window management).
     \item \textit{Build System:} CMake 3.16+ with cross-compilation support for ARM64 (Jetson Nano).
-    \item \textit{Testing:} Google Test framework for unit validation.
     \item \textit{Simulation:} MATLAB R2024a with Simulink for multi-rate system modeling.
 \end{itemize}
 
@@ -527,8 +519,10 @@ The development timeline was divided into four stages over 16 weeks, with overla
 
 \begin{table}[htbp]
 \caption{Development Stage Timeline}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
 \begin{center}
-\begin{tabular}{lcc}
+\begin{tabular}{@{}p{3.5cm}cp{3.0cm}@{}}
 \toprule
 \textbf{Stage} & \textbf{Weeks} & \textbf{Focus} \\
 \midrule
@@ -640,7 +634,7 @@ Multi-Sensor Array & \checkmark & $\times$ & \checkmark \\
 % ============================================================================
 \section{Conclusion \& Future Work}
 \label{sec:conclusion}
-We have designed and implemented a secure, distributed cyber-physical architecture for multi-channel radar simulation and target tracking. By offloading computational tasks from the FreeRTOS microcontroller to a Vulkan-accelerated Jetson Nano node, the system sweeps without introducing angular blind spots. Communication is secured with XTEA encryption and validated using CRC-16 checks, targeting a frame drop rate $\le 1\%$. The MTI tracking engine, based on Nearest-Neighbor Euclidean association, is evaluated against a displacement-error criterion of $\le 2\text{ cm}$, and each sweep cycle's radar frame is archived as a PBM file to the logs directory within a one-inter-sweep logging budget. An earlier single-channel MATLAB/Simulink model exercises the same secure-telemetry and tracking blocks under noise and packet loss, providing a reproducible cross-check of the design. The evaluation methodology and pass/fail criteria for these metrics are defined in Section~\ref{sec:evaluation}.
+We have designed and implemented a secure, distributed cyber-physical architecture for multi-channel radar simulation and target tracking. By offloading computational tasks from the FreeRTOS microcontroller to a Vulkan-accelerated Jetson Nano node, the system sweeps without introducing angular blind spots. Communication is secured with XTEA encryption and validated using CRC-16 checks, targeting a frame drop rate $\le 1\%$. The MTI tracking engine, based on Nearest-Neighbor Euclidean association, derives target velocity vectors, and each sweep cycle's radar frame is archived as a PBM file to the logs directory within a one-inter-sweep logging budget. An earlier single-channel MATLAB/Simulink model---one servo and one ultrasonic head---exercised the same secure-telemetry and tracking blocks under noise and packet loss, marking a progression milestone that preceded the three-channel hardware build. The evaluation methodology and pass/fail criteria for these metrics are defined in Section~\ref{sec:evaluation}.
 
 The key contributions of this work are:
 \begin{enumerate}
@@ -649,7 +643,7 @@ The key contributions of this work are:
     \item An overlap corroboration algorithm that cross-verifies detections across sensor boundaries.
     \item A Vulkan-based rendering pipeline with compute shaders for GPU-accelerated MTI and fragment shaders for CRT phosphor simulation.
     \item A PBM file logging pipeline that archives each sweep cycle's framebuffer to a structured \texttt{logs/} directory, enabling persistent scan replay and post-hoc analysis.
-    \item A programmatic MATLAB/Simulink prototype that validated the secure-telemetry and tracking pipeline on a single channel, documenting the project's progression toward the three-channel hardware build.
+    \item A programmatic single-channel MATLAB/Simulink prototype that exercised the secure-telemetry and tracking pipeline as an early progression milestone preceding the three-channel hardware build.
 \end{enumerate}
 
 Future improvements will focus on:

@@ -446,7 +446,7 @@
 
     .gantt-header-row {
       display: grid;
-      grid-template-columns: 240px repeat(14, 1fr);
+      grid-template-columns: 240px repeat(16, 1fr);
       text-align: center;
       font-weight: 600;
       color: var(--text-muted);
@@ -482,7 +482,7 @@
 
     .gantt-row {
       display: grid;
-      grid-template-columns: 240px repeat(14, 1fr);
+      grid-template-columns: 240px repeat(16, 1fr);
       align-items: stretch;
       border-bottom: 1px solid rgba(255, 255, 255, 0.05);
       min-height: 32px;
@@ -1614,34 +1614,37 @@ if (rawDataQueue != NULL && txQueue != NULL) {
         <h2>Evaluation: Gantt Chart</h2>
         <p
           style="font-size: 0.76rem; color: var(--text-secondary); margin-bottom: 14px; line-height: 1.45; max-width: 90%; text-align: left; margin-left: auto; margin-right: auto;">
-          The development timeline spans 14 weeks, divided into 5 distinct engineering stages. By overlapping hardware
-          calibration with backend software development, the team parallelized efforts to resolve critical path
-          dependencies, concluding with final integration and cross-validation tests.
+          The development timeline spans 16 weeks, divided into 4 distinct engineering phases. By sequencing tasks
+          logically—establishing core setup and encryption first, followed by backend logic and modeling, then GPU
+          rendering and target tracking, and concluding with hardware integration and system testing—the team minimized
+          resource overlap and successfully met all milestones.
         </p>
         <div class="gantt-chart">
           <div class="gantt-header-row">
             <div class="gantt-header-cell label-col">Task / Milestone</div>
-            <div class="gantt-header-cell">W1<span class="gantt-date">Feb 23</span></div>
-            <div class="gantt-header-cell">W2<span class="gantt-date">Mar 02</span></div>
-            <div class="gantt-header-cell">W3<span class="gantt-date">Mar 09</span></div>
-            <div class="gantt-header-cell">W4<span class="gantt-date">Mar 16</span></div>
-            <div class="gantt-header-cell">W5<span class="gantt-date">Mar 23</span></div>
-            <div class="gantt-header-cell">W6<span class="gantt-date">Mar 30</span></div>
-            <div class="gantt-header-cell">W7<span class="gantt-date">Apr 06</span></div>
-            <div class="gantt-header-cell">W8<span class="gantt-date">Apr 13</span></div>
-            <div class="gantt-header-cell">W9<span class="gantt-date">Apr 20</span></div>
-            <div class="gantt-header-cell">W10<span class="gantt-date">Apr 27</span></div>
-            <div class="gantt-header-cell">W11<span class="gantt-date">May 04</span></div>
-            <div class="gantt-header-cell">W12<span class="gantt-date">May 11</span></div>
-            <div class="gantt-header-cell">W13<span class="gantt-date">May 18</span></div>
-            <div class="gantt-header-cell">W14<span class="gantt-date">May 25</span></div>
+            <div class="gantt-header-cell">W1<span class="gantt-date">Mar 13</span></div>
+            <div class="gantt-header-cell">W2<span class="gantt-date">Mar 20</span></div>
+            <div class="gantt-header-cell">W3<span class="gantt-date">Mar 27</span></div>
+            <div class="gantt-header-cell">W4<span class="gantt-date">Apr 03</span></div>
+            <div class="gantt-header-cell">W5<span class="gantt-date">Apr 10</span></div>
+            <div class="gantt-header-cell">W6<span class="gantt-date">Apr 17</span></div>
+            <div class="gantt-header-cell">W7<span class="gantt-date">Apr 24</span></div>
+            <div class="gantt-header-cell">W8<span class="gantt-date">May 01</span></div>
+            <div class="gantt-header-cell">W9<span class="gantt-date">May 08</span></div>
+            <div class="gantt-header-cell">W10<span class="gantt-date">May 15</span></div>
+            <div class="gantt-header-cell">W11<span class="gantt-date">May 22</span></div>
+            <div class="gantt-header-cell">W12<span class="gantt-date">May 29</span></div>
+            <div class="gantt-header-cell">W13<span class="gantt-date">Jun 05</span></div>
+            <div class="gantt-header-cell">W14<span class="gantt-date">Jun 12</span></div>
+            <div class="gantt-header-cell">W15<span class="gantt-date">Jun 19</span></div>
+            <div class="gantt-header-cell">W16<span class="gantt-date">Jun 26</span></div>
           </div>
 
-          <!-- Row 1: Concept & Requirement Analysis -->
+          <!-- Row 1: Research, Feasibility & Literature Review -->
           <div class="gantt-row">
             <div class="gantt-label">
-              <span class="gantt-task-title">Concept &amp; Requirement Analysis</span>
-              <span class="gantt-task-assignees">Akın, Yiğit, Meriç, Necla, Yusuf</span>
+              <span class="gantt-task-title">Research, Feasibility &amp; Lit. Review</span>
+              <span class="gantt-task-assignees">All Members</span>
             </div>
             <div class="gantt-cell" style="grid-column: 2;"></div>
             <div class="gantt-cell" style="grid-column: 3;"></div>
@@ -1657,36 +1660,17 @@ if (rawDataQueue != NULL && txQueue != NULL) {
             <div class="gantt-cell" style="grid-column: 13;"></div>
             <div class="gantt-cell" style="grid-column: 14;"></div>
             <div class="gantt-cell" style="grid-column: 15;"></div>
-            <div class="gantt-bar bar-finished" style="grid-column: 2 / 5;">W1 - W3</div>
+            <div class="gantt-cell" style="grid-column: 16;"></div>
+            <div class="gantt-cell" style="grid-column: 17;"></div>
+            <div class="gantt-bar bar-finished"
+              style="grid-column: 2 / 10; justify-self: start; margin-left: calc(6.25% + 4px); width: calc(87.5% - 8px);">
+              Mar 13 - May 01</div>
           </div>
 
-          <!-- Row 2: Project Proposal & Submission -->
+          <!-- Row 2: Proposal Deadline (Milestone) -->
           <div class="gantt-row gantt-row-even">
             <div class="gantt-label">
-              <span class="gantt-task-title">Project Proposal &amp; Submission</span>
-              <span class="gantt-task-assignees">Necla, Yusuf, Meriç</span>
-            </div>
-            <div class="gantt-cell" style="grid-column: 2;"></div>
-            <div class="gantt-cell" style="grid-column: 3;"></div>
-            <div class="gantt-cell" style="grid-column: 4;"></div>
-            <div class="gantt-cell" style="grid-column: 5;"></div>
-            <div class="gantt-cell" style="grid-column: 6;"></div>
-            <div class="gantt-cell" style="grid-column: 7;"></div>
-            <div class="gantt-cell" style="grid-column: 8;"></div>
-            <div class="gantt-cell" style="grid-column: 9;"></div>
-            <div class="gantt-cell" style="grid-column: 10;"></div>
-            <div class="gantt-cell" style="grid-column: 11;"></div>
-            <div class="gantt-cell" style="grid-column: 12;"></div>
-            <div class="gantt-cell" style="grid-column: 13;"></div>
-            <div class="gantt-cell" style="grid-column: 14;"></div>
-            <div class="gantt-cell" style="grid-column: 15;"></div>
-            <div class="gantt-bar bar-finished" style="grid-column: 3 / 6;">W2 - W4</div>
-          </div>
-
-          <!-- Row 3: Proposal Approved (Milestone) -->
-          <div class="gantt-row">
-            <div class="gantt-label">
-              <span class="gantt-task-title">Proposal Approved</span>
+              <span class="gantt-task-title">Proposal Deadline</span>
               <span class="gantt-task-assignees">Milestone</span>
             </div>
             <div class="gantt-cell" style="grid-column: 2;"></div>
@@ -1703,39 +1687,18 @@ if (rawDataQueue != NULL && txQueue != NULL) {
             <div class="gantt-cell" style="grid-column: 13;"></div>
             <div class="gantt-cell" style="grid-column: 14;"></div>
             <div class="gantt-cell" style="grid-column: 15;"></div>
-            <div class="gantt-milestone-container" style="grid-column: 6;">
+            <div class="gantt-cell" style="grid-column: 16;"></div>
+            <div class="gantt-cell" style="grid-column: 17;"></div>
+            <div class="gantt-milestone-container" style="grid-column: 9; justify-content: center; margin-left: 0;">
               <div class="gantt-milestone-diamond"></div>
             </div>
           </div>
 
-          <!-- Row 4: Sensor Drivers & Polling (FreeRTOS) -->
-          <div class="gantt-row gantt-row-even">
-            <div class="gantt-label">
-              <span class="gantt-task-title">Sensor Drivers &amp; Polling (FreeRTOS)</span>
-              <span class="gantt-task-assignees">Yiğit, Akın</span>
-            </div>
-            <div class="gantt-cell" style="grid-column: 2;"></div>
-            <div class="gantt-cell" style="grid-column: 3;"></div>
-            <div class="gantt-cell" style="grid-column: 4;"></div>
-            <div class="gantt-cell" style="grid-column: 5;"></div>
-            <div class="gantt-cell" style="grid-column: 6;"></div>
-            <div class="gantt-cell" style="grid-column: 7;"></div>
-            <div class="gantt-cell" style="grid-column: 8;"></div>
-            <div class="gantt-cell" style="grid-column: 9;"></div>
-            <div class="gantt-cell" style="grid-column: 10;"></div>
-            <div class="gantt-cell" style="grid-column: 11;"></div>
-            <div class="gantt-cell" style="grid-column: 12;"></div>
-            <div class="gantt-cell" style="grid-column: 13;"></div>
-            <div class="gantt-cell" style="grid-column: 14;"></div>
-            <div class="gantt-cell" style="grid-column: 15;"></div>
-            <div class="gantt-bar bar-finished" style="grid-column: 4 / 8;">W3 - W6</div>
-          </div>
-
-          <!-- Row 5: UART Serial Ingestion & Parsing -->
+          <!-- Row 3: Arduino FreeRTOS Setup -->
           <div class="gantt-row">
             <div class="gantt-label">
-              <span class="gantt-task-title">UART Serial Ingestion &amp; Parsing</span>
-              <span class="gantt-task-assignees">Akın, Yusuf</span>
+              <span class="gantt-task-title">Arduino FreeRTOS Setup</span>
+              <span class="gantt-task-assignees">Yiğit, Yusuf</span>
             </div>
             <div class="gantt-cell" style="grid-column: 2;"></div>
             <div class="gantt-cell" style="grid-column: 3;"></div>
@@ -1751,13 +1714,71 @@ if (rawDataQueue != NULL && txQueue != NULL) {
             <div class="gantt-cell" style="grid-column: 13;"></div>
             <div class="gantt-cell" style="grid-column: 14;"></div>
             <div class="gantt-cell" style="grid-column: 15;"></div>
-            <div class="gantt-bar bar-finished" style="grid-column: 6 / 10;">W5 - W8</div>
+            <div class="gantt-cell" style="grid-column: 16;"></div>
+            <div class="gantt-cell" style="grid-column: 17;"></div>
+            <div class="gantt-bar bar-finished"
+              style="grid-column: 9 / 11; justify-self: start; margin-left: calc(25% + 4px); width: calc(42.9% - 8px);">
+              May 01 - May 07</div>
           </div>
 
-          <!-- Row 6: XTEA Cryptography & CRC-16 CCITT -->
+          <!-- Row 4: Basic Backend -->
           <div class="gantt-row gantt-row-even">
             <div class="gantt-label">
-              <span class="gantt-task-title">XTEA Cryptography &amp; CRC-16</span>
+              <span class="gantt-task-title">Basic Backend</span>
+              <span class="gantt-task-assignees">Yiğit</span>
+            </div>
+            <div class="gantt-cell" style="grid-column: 2;"></div>
+            <div class="gantt-cell" style="grid-column: 3;"></div>
+            <div class="gantt-cell" style="grid-column: 4;"></div>
+            <div class="gantt-cell" style="grid-column: 5;"></div>
+            <div class="gantt-cell" style="grid-column: 6;"></div>
+            <div class="gantt-cell" style="grid-column: 7;"></div>
+            <div class="gantt-cell" style="grid-column: 8;"></div>
+            <div class="gantt-cell" style="grid-column: 9;"></div>
+            <div class="gantt-cell" style="grid-column: 10;"></div>
+            <div class="gantt-cell" style="grid-column: 11;"></div>
+            <div class="gantt-cell" style="grid-column: 12;"></div>
+            <div class="gantt-cell" style="grid-column: 13;"></div>
+            <div class="gantt-cell" style="grid-column: 14;"></div>
+            <div class="gantt-cell" style="grid-column: 15;"></div>
+            <div class="gantt-cell" style="grid-column: 16;"></div>
+            <div class="gantt-cell" style="grid-column: 17;"></div>
+            <div class="gantt-bar bar-finished"
+              style="grid-column: 9 / 12; justify-self: start; margin-left: calc(40.5% + 4px); width: calc(28.6% - 8px);">
+              May 06 - May 12</div>
+          </div>
+
+          <!-- Row 5: Encryption/Decryption -->
+          <div class="gantt-row">
+            <div class="gantt-label">
+              <span class="gantt-task-title">Encryption/Decryption</span>
+              <span class="gantt-task-assignees">Akın, Necla</span>
+            </div>
+            <div class="gantt-cell" style="grid-column: 2;"></div>
+            <div class="gantt-cell" style="grid-column: 3;"></div>
+            <div class="gantt-cell" style="grid-column: 4;"></div>
+            <div class="gantt-cell" style="grid-column: 5;"></div>
+            <div class="gantt-cell" style="grid-column: 6;"></div>
+            <div class="gantt-cell" style="grid-column: 7;"></div>
+            <div class="gantt-cell" style="grid-column: 8;"></div>
+            <div class="gantt-cell" style="grid-column: 9;"></div>
+            <div class="gantt-cell" style="grid-column: 10;"></div>
+            <div class="gantt-cell" style="grid-column: 11;"></div>
+            <div class="gantt-cell" style="grid-column: 12;"></div>
+            <div class="gantt-cell" style="grid-column: 13;"></div>
+            <div class="gantt-cell" style="grid-column: 14;"></div>
+            <div class="gantt-cell" style="grid-column: 15;"></div>
+            <div class="gantt-cell" style="grid-column: 16;"></div>
+            <div class="gantt-cell" style="grid-column: 17;"></div>
+            <div class="gantt-bar bar-finished"
+              style="grid-column: 10 / 12; justify-self: start; margin-left: calc(46.5% + 4px); width: calc(42.9% - 8px);">
+              May 11 - May 17</div>
+          </div>
+
+          <!-- Row 6: Simulink Simulation -->
+          <div class="gantt-row gantt-row-even">
+            <div class="gantt-label">
+              <span class="gantt-task-title">Simulink Simulation</span>
               <span class="gantt-task-assignees">Meriç, Necla</span>
             </div>
             <div class="gantt-cell" style="grid-column: 2;"></div>
@@ -1774,13 +1795,17 @@ if (rawDataQueue != NULL && txQueue != NULL) {
             <div class="gantt-cell" style="grid-column: 13;"></div>
             <div class="gantt-cell" style="grid-column: 14;"></div>
             <div class="gantt-cell" style="grid-column: 15;"></div>
-            <div class="gantt-bar bar-finished" style="grid-column: 5 / 10;">W4 - W8</div>
+            <div class="gantt-cell" style="grid-column: 16;"></div>
+            <div class="gantt-cell" style="grid-column: 17;"></div>
+            <div class="gantt-bar bar-finished"
+              style="grid-column: 11 / 13; justify-self: start; margin-left: calc(32.2% + 4px); width: calc(42.9% - 8px);">
+              May 16 - May 22</div>
           </div>
 
-          <!-- Row 7: Firmware & Link Verification (Milestone) -->
+          <!-- Row 7: Feedback Session 1 (Milestone) -->
           <div class="gantt-row">
             <div class="gantt-label">
-              <span class="gantt-task-title">Firmware &amp; Link Verification</span>
+              <span class="gantt-task-title">Feedback Session 1</span>
               <span class="gantt-task-assignees">Milestone</span>
             </div>
             <div class="gantt-cell" style="grid-column: 2;"></div>
@@ -1797,16 +1822,18 @@ if (rawDataQueue != NULL && txQueue != NULL) {
             <div class="gantt-cell" style="grid-column: 13;"></div>
             <div class="gantt-cell" style="grid-column: 14;"></div>
             <div class="gantt-cell" style="grid-column: 15;"></div>
-            <div class="gantt-milestone-container" style="grid-column: 10;">
+            <div class="gantt-cell" style="grid-column: 16;"></div>
+            <div class="gantt-cell" style="grid-column: 17;"></div>
+            <div class="gantt-milestone-container" style="grid-column: 12; justify-content: center; margin-left: 0;">
               <div class="gantt-milestone-diamond"></div>
             </div>
           </div>
 
-          <!-- Row 8: Vulkan Device & Swapchain Setup -->
+          <!-- Row 8: Basic MTI Tracking -->
           <div class="gantt-row gantt-row-even">
             <div class="gantt-label">
-              <span class="gantt-task-title">Vulkan Device &amp; Swapchain Setup</span>
-              <span class="gantt-task-assignees">Akın</span>
+              <span class="gantt-task-title">Basic MTI Tracking</span>
+              <span class="gantt-task-assignees">Meriç, Akın</span>
             </div>
             <div class="gantt-cell" style="grid-column: 2;"></div>
             <div class="gantt-cell" style="grid-column: 3;"></div>
@@ -1822,14 +1849,18 @@ if (rawDataQueue != NULL && txQueue != NULL) {
             <div class="gantt-cell" style="grid-column: 13;"></div>
             <div class="gantt-cell" style="grid-column: 14;"></div>
             <div class="gantt-cell" style="grid-column: 15;"></div>
-            <div class="gantt-bar bar-finished" style="grid-column: 8 / 11;">W7 - W9</div>
+            <div class="gantt-cell" style="grid-column: 16;"></div>
+            <div class="gantt-cell" style="grid-column: 17;"></div>
+            <div class="gantt-bar bar-finished"
+              style="grid-column: 12 / 14; justify-self: start; margin-left: calc(25% + 4px); width: calc(50% - 8px);">
+              May 22 - May 29</div>
           </div>
 
-          <!-- Row 9: Coordinate Math & NN Association -->
+          <!-- Row 9: Basic PBM Logging -->
           <div class="gantt-row">
             <div class="gantt-label">
-              <span class="gantt-task-title">Coordinate Math &amp; NN Association</span>
-              <span class="gantt-task-assignees">Yusuf, Yiğit, Necla</span>
+              <span class="gantt-task-title">Basic PBM Logging</span>
+              <span class="gantt-task-assignees">Yusuf</span>
             </div>
             <div class="gantt-cell" style="grid-column: 2;"></div>
             <div class="gantt-cell" style="grid-column: 3;"></div>
@@ -1845,11 +1876,44 @@ if (rawDataQueue != NULL && txQueue != NULL) {
             <div class="gantt-cell" style="grid-column: 13;"></div>
             <div class="gantt-cell" style="grid-column: 14;"></div>
             <div class="gantt-cell" style="grid-column: 15;"></div>
-            <div class="gantt-bar bar-finished" style="grid-column: 9 / 12;">W8 - W10</div>
+            <div class="gantt-cell" style="grid-column: 16;"></div>
+            <div class="gantt-cell" style="grid-column: 17;"></div>
+            <div class="gantt-bar bar-finished"
+              style="grid-column: 13 / 15; justify-self: start; margin-left: calc(10.7% + 4px); width: calc(57.1% - 8px);">
+              May 27 - Jun 04</div>
           </div>
+
+          <!-- Row 10: Vulkan Visualization -->
           <div class="gantt-row gantt-row-even">
             <div class="gantt-label">
-              <span class="gantt-task-title">Feedback Session</span>
+              <span class="gantt-task-title">Vulkan Visualization</span>
+              <span class="gantt-task-assignees">Akın, Yiğit</span>
+            </div>
+            <div class="gantt-cell" style="grid-column: 2;"></div>
+            <div class="gantt-cell" style="grid-column: 3;"></div>
+            <div class="gantt-cell" style="grid-column: 4;"></div>
+            <div class="gantt-cell" style="grid-column: 5;"></div>
+            <div class="gantt-cell" style="grid-column: 6;"></div>
+            <div class="gantt-cell" style="grid-column: 7;"></div>
+            <div class="gantt-cell" style="grid-column: 8;"></div>
+            <div class="gantt-cell" style="grid-column: 9;"></div>
+            <div class="gantt-cell" style="grid-column: 10;"></div>
+            <div class="gantt-cell" style="grid-column: 11;"></div>
+            <div class="gantt-cell" style="grid-column: 12;"></div>
+            <div class="gantt-cell" style="grid-column: 13;"></div>
+            <div class="gantt-cell" style="grid-column: 14;"></div>
+            <div class="gantt-cell" style="grid-column: 15;"></div>
+            <div class="gantt-cell" style="grid-column: 16;"></div>
+            <div class="gantt-cell" style="grid-column: 17;"></div>
+            <div class="gantt-bar bar-finished"
+              style="grid-column: 14 / 16; justify-self: start; margin-left: calc(3.6% + 4px); width: calc(71.4% - 8px);">
+              Jun 02 - Jun 12</div>
+          </div>
+
+          <!-- Row 11: Feedback Session 2 (Milestone) -->
+          <div class="gantt-row">
+            <div class="gantt-label">
+              <span class="gantt-task-title">Feedback Session 2</span>
               <span class="gantt-task-assignees">Milestone</span>
             </div>
             <div class="gantt-cell" style="grid-column: 2;"></div>
@@ -1866,16 +1930,18 @@ if (rawDataQueue != NULL && txQueue != NULL) {
             <div class="gantt-cell" style="grid-column: 13;"></div>
             <div class="gantt-cell" style="grid-column: 14;"></div>
             <div class="gantt-cell" style="grid-column: 15;"></div>
-            <div class="gantt-milestone-container" style="grid-column: 11;">
+            <div class="gantt-cell" style="grid-column: 16;"></div>
+            <div class="gantt-cell" style="grid-column: 17;"></div>
+            <div class="gantt-milestone-container" style="grid-column: 15; justify-content: center; margin-left: 0;">
               <div class="gantt-milestone-diamond"></div>
             </div>
           </div>
 
-          <!-- Row 10: GLSL Compute & CRT Shaders -->
+          <!-- Row 12: MTI Tracking with Vectors -->
           <div class="gantt-row gantt-row-even">
             <div class="gantt-label">
-              <span class="gantt-task-title">GLSL Compute &amp; CRT Shaders</span>
-              <span class="gantt-task-assignees">Meriç, Yusuf</span>
+              <span class="gantt-task-title">MTI Tracking with Vectors</span>
+              <span class="gantt-task-assignees">Meriç, Yiğit</span>
             </div>
             <div class="gantt-cell" style="grid-column: 2;"></div>
             <div class="gantt-cell" style="grid-column: 3;"></div>
@@ -1891,14 +1957,18 @@ if (rawDataQueue != NULL && txQueue != NULL) {
             <div class="gantt-cell" style="grid-column: 13;"></div>
             <div class="gantt-cell" style="grid-column: 14;"></div>
             <div class="gantt-cell" style="grid-column: 15;"></div>
-            <div class="gantt-bar bar-finished" style="grid-column: 10 / 14;">W9 - W12</div>
+            <div class="gantt-cell" style="grid-column: 16;"></div>
+            <div class="gantt-cell" style="grid-column: 17;"></div>
+            <div class="gantt-bar bar-finished"
+              style="grid-column: 15 / 17; justify-self: start; margin-left: calc(25% + 4px); width: calc(28.6% - 8px);">
+              Jun 12 - Jun 16</div>
           </div>
 
-          <!-- Row 11: Tracking Engine Complete (Milestone) -->
+          <!-- Row 13: UART -->
           <div class="gantt-row">
             <div class="gantt-label">
-              <span class="gantt-task-title">Tracking Engine Complete</span>
-              <span class="gantt-task-assignees">Milestone</span>
+              <span class="gantt-task-title">UART</span>
+              <span class="gantt-task-assignees">Necla, Yiğit</span>
             </div>
             <div class="gantt-cell" style="grid-column: 2;"></div>
             <div class="gantt-cell" style="grid-column: 3;"></div>
@@ -1914,16 +1984,18 @@ if (rawDataQueue != NULL && txQueue != NULL) {
             <div class="gantt-cell" style="grid-column: 13;"></div>
             <div class="gantt-cell" style="grid-column: 14;"></div>
             <div class="gantt-cell" style="grid-column: 15;"></div>
-            <div class="gantt-milestone-container" style="grid-column: 14;">
-              <div class="gantt-milestone-diamond"></div>
-            </div>
+            <div class="gantt-cell" style="grid-column: 16;"></div>
+            <div class="gantt-cell" style="grid-column: 17;"></div>
+            <div class="gantt-bar bar-finished"
+              style="grid-column: 16; justify-self: start; margin-left: calc(7.1% + 4px); width: calc(42.9% - 8px);">Jun
+              16 - Jun 19</div>
           </div>
 
-          <!-- Row 12: Monochrome & Thermal Logging -->
+          <!-- Row 14: Jetson Nano Integration -->
           <div class="gantt-row gantt-row-even">
             <div class="gantt-label">
-              <span class="gantt-task-title">Monochrome &amp; Thermal Logging</span>
-              <span class="gantt-task-assignees">Akın, Yiğit, Meriç</span>
+              <span class="gantt-task-title">Jetson Nano Integration</span>
+              <span class="gantt-task-assignees">All Members</span>
             </div>
             <div class="gantt-cell" style="grid-column: 2;"></div>
             <div class="gantt-cell" style="grid-column: 3;"></div>
@@ -1939,37 +2011,18 @@ if (rawDataQueue != NULL && txQueue != NULL) {
             <div class="gantt-cell" style="grid-column: 13;"></div>
             <div class="gantt-cell" style="grid-column: 14;"></div>
             <div class="gantt-cell" style="grid-column: 15;"></div>
-            <div class="gantt-bar bar-finished" style="grid-column: 12 / 15;">W11 - W13</div>
-          </div>
-          <div class="gantt-row gantt-row-even">
-            <div class="gantt-label">
-              <span class="gantt-task-title">Feedback session</span>
-              <span class="gantt-task-assignees">Milestone</span>
-            </div>
-            <div class="gantt-cell" style="grid-column: 2;"></div>
-            <div class="gantt-cell" style="grid-column: 3;"></div>
-            <div class="gantt-cell" style="grid-column: 4;"></div>
-            <div class="gantt-cell" style="grid-column: 5;"></div>
-            <div class="gantt-cell" style="grid-column: 6;"></div>
-            <div class="gantt-cell" style="grid-column: 7;"></div>
-            <div class="gantt-cell" style="grid-column: 8;"></div>
-            <div class="gantt-cell" style="grid-column: 9;"></div>
-            <div class="gantt-cell" style="grid-column: 10;"></div>
-            <div class="gantt-cell" style="grid-column: 11;"></div>
-            <div class="gantt-cell" style="grid-column: 12;"></div>
-            <div class="gantt-cell" style="grid-column: 13;"></div>
-            <div class="gantt-cell" style="grid-column: 14;"></div>
-            <div class="gantt-cell" style="grid-column: 15;"></div>
-            <div class="gantt-milestone-container" style="grid-column: 15;">
-              <div class="gantt-milestone-diamond"></div>
-            </div>
+            <div class="gantt-cell" style="grid-column: 16;"></div>
+            <div class="gantt-cell" style="grid-column: 17;"></div>
+            <div class="gantt-bar bar-finished"
+              style="grid-column: 16; justify-self: start; margin-left: calc(50% + 4px); width: calc(42.9% - 8px);">Jun
+              19 - Jun 22</div>
           </div>
 
-          <!-- Row 13: Async Spooler Integration -->
+          <!-- Row 15: System Testing -->
           <div class="gantt-row">
             <div class="gantt-label">
-              <span class="gantt-task-title">Async Spooler Integration</span>
-              <span class="gantt-task-assignees">Yusuf, Necla</span>
+              <span class="gantt-task-title">System Testing</span>
+              <span class="gantt-task-assignees">All Members</span>
             </div>
             <div class="gantt-cell" style="grid-column: 2;"></div>
             <div class="gantt-cell" style="grid-column: 3;"></div>
@@ -1985,14 +2038,18 @@ if (rawDataQueue != NULL && txQueue != NULL) {
             <div class="gantt-cell" style="grid-column: 13;"></div>
             <div class="gantt-cell" style="grid-column: 14;"></div>
             <div class="gantt-cell" style="grid-column: 15;"></div>
-            <div class="gantt-bar bar-finished" style="grid-column: 13 / 16;">W12 - W14</div>
+            <div class="gantt-cell" style="grid-column: 16;"></div>
+            <div class="gantt-cell" style="grid-column: 17;"></div>
+            <div class="gantt-bar bar-finished"
+              style="grid-column: 16 / 18; justify-self: start; margin-left: calc(46.5% + 4px); width: calc(28.6% - 8px);">
+              Jun 22 - Jun 26</div>
           </div>
 
-          <!-- Row 14: System Integration & Testing -->
+          <!-- Row 16: Documentation -->
           <div class="gantt-row gantt-row-even">
             <div class="gantt-label">
-              <span class="gantt-task-title">System Integration &amp; Testing</span>
-              <span class="gantt-task-assignees">Akın, Yiğit, Meriç, Necla, Yusuf</span>
+              <span class="gantt-task-title">Documentation</span>
+              <span class="gantt-task-assignees">All Members</span>
             </div>
             <div class="gantt-cell" style="grid-column: 2;"></div>
             <div class="gantt-cell" style="grid-column: 3;"></div>
@@ -2008,34 +2065,15 @@ if (rawDataQueue != NULL && txQueue != NULL) {
             <div class="gantt-cell" style="grid-column: 13;"></div>
             <div class="gantt-cell" style="grid-column: 14;"></div>
             <div class="gantt-cell" style="grid-column: 15;"></div>
-            <div class="gantt-bar bar-finished" style="grid-column: 14 / 16;">W13 - W14</div>
+            <div class="gantt-cell" style="grid-column: 16;"></div>
+            <div class="gantt-cell" style="grid-column: 17;"></div>
+            <div class="gantt-bar bar-finished"
+              style="grid-column: 16 / 18; justify-self: start; margin-left: calc(10.7% + 4px); width: calc(64.3% - 8px);">
+              Jun 17 - Jun 26</div>
           </div>
 
-          <!-- Row 15: Demo Video & Final Report -->
+          <!-- Row 17: Final Project Completed (Milestone) -->
           <div class="gantt-row">
-            <div class="gantt-label">
-              <span class="gantt-task-title">Final Report</span>
-              <span class="gantt-task-assignees">Necla, Yiğit, Yusuf</span>
-            </div>
-            <div class="gantt-cell" style="grid-column: 2;"></div>
-            <div class="gantt-cell" style="grid-column: 3;"></div>
-            <div class="gantt-cell" style="grid-column: 4;"></div>
-            <div class="gantt-cell" style="grid-column: 5;"></div>
-            <div class="gantt-cell" style="grid-column: 6;"></div>
-            <div class="gantt-cell" style="grid-column: 7;"></div>
-            <div class="gantt-cell" style="grid-column: 8;"></div>
-            <div class="gantt-cell" style="grid-column: 9;"></div>
-            <div class="gantt-cell" style="grid-column: 10;"></div>
-            <div class="gantt-cell" style="grid-column: 11;"></div>
-            <div class="gantt-cell" style="grid-column: 12;"></div>
-            <div class="gantt-cell" style="grid-column: 13;"></div>
-            <div class="gantt-cell" style="grid-column: 14;"></div>
-            <div class="gantt-cell" style="grid-column: 15;"></div>
-            <div class="gantt-bar bar-finished" style="grid-column: 14 / 16;">W13 - W14</div>
-          </div>
-
-          <!-- Row 16: Final Project Completed (Milestone) -->
-          <div class="gantt-row gantt-row-even">
             <div class="gantt-label">
               <span class="gantt-task-title">Final Project Completed</span>
               <span class="gantt-task-assignees">Milestone</span>
@@ -2054,7 +2092,9 @@ if (rawDataQueue != NULL && txQueue != NULL) {
             <div class="gantt-cell" style="grid-column: 13;"></div>
             <div class="gantt-cell" style="grid-column: 14;"></div>
             <div class="gantt-cell" style="grid-column: 15;"></div>
-            <div class="gantt-milestone-container" style="grid-column: 16;">
+            <div class="gantt-cell" style="grid-column: 16;"></div>
+            <div class="gantt-cell" style="grid-column: 17;"></div>
+            <div class="gantt-milestone-container" style="grid-column: 17; justify-content: center; margin-left: 0;">
               <div class="gantt-milestone-diamond"></div>
             </div>
           </div>

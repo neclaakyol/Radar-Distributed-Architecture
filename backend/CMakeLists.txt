@@ -15,6 +15,8 @@ add_library(radar_core
   src/mti_gpu.cpp
   src/raster.cpp
   src/software_renderer.cpp
+  src/geometry.cpp
+  src/corroboration.cpp
 )
 
 target_include_directories(radar_core PUBLIC

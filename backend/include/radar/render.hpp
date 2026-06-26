@@ -1,10 +1,12 @@
 #pragma once
 
+#include "radar/geometry.hpp"
 #include "radar/mti.hpp"
 #include "radar/protocol.hpp"
 #include "radar/raster.hpp"
 #include "radar/sweep.hpp"
 
+#include <array>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -22,9 +24,10 @@ struct RenderState {
   std::vector<RadarPoint> current_points;
   std::vector<RadarPoint> history_points;
   std::vector<MotionVector> vectors;
-  std::uint8_t sweep_angle_deg = 0;
+  std::array<std::uint8_t, kNumSensors> sweep_angle_by_sensor{};
   RenderStats stats;
   std::string source_name;
+  SensorGeometry geometry;
 };
 
 class SoftwareRenderer {

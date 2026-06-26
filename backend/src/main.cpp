@@ -1,3 +1,5 @@
+#include "radar/corroboration.hpp"
+#include "radar/geometry.hpp"
 #include "radar/io.hpp"
 #include "radar/mti.hpp"
 #include "radar/protocol.hpp"
@@ -13,7 +15,9 @@
 #include "radar/vulkan_renderer.hpp"
 #endif
 
+#include <array>
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <cstddef>
 #include <cstdlib>
@@ -46,6 +50,12 @@ struct Config {
   std::filesystem::path log_dir = "logs";
   std::uint8_t threshold = 128;
   bool no_render = false;
+
+  // Sensor mount geometry and corroboration tuning. Defaults are
+  // placeholders (see geometry.hpp) pending physical measurement of the
+  // 3-sensor rig; override via CLI once the rig is built and measured.
+  radar::SensorGeometry geometry;
+  radar::CorroborationConfig corroboration;
 };
 
 void print_usage(const char *argv0) {
@@ -57,7 +67,16 @@ void print_usage(const char *argv0) {
             << "  --tau-mm N       MTI match threshold, default 80\n"
             << "  --log-dir PATH   PBM output directory, default logs\n"
             << "  --threshold N    PBM luminance threshold, default 128\n"
-            << "  --no-render      Disable framebuffer/PBM generation\n";
+            << "  --no-render      Disable framebuffer/PBM generation\n\n"
+            << "Sensor mount geometry (placeholders -- see geometry.hpp):\n"
+            << "  --left-offset-x-mm N, --left-offset-y-mm N, --left-heading-deg N\n"
+            << "  --right-offset-x-mm N, --right-offset-y-mm N, --right-heading-deg N\n\n"
+            << "Cross-sensor corroboration tuning:\n"
+            << "  --corroboration-band-main-deg N   default 15\n"
+            << "  --corroboration-band-flank-deg N  default 30\n"
+            << "  --corroboration-tolerance-mm N    default 100\n"
+            << "  --corroboration-window-ms N       default 500\n"
+            << "  --max-range-mm N                  sanity bound, default 4500\n";
 }
 
 Config parse_args(int argc, char **argv) {
@@ -89,6 +108,32 @@ Config parse_args(int argc, char **argv) {
       config.threshold = static_cast<std::uint8_t>(threshold);
     } else if (arg == "--no-render") {
       config.no_render = true;
+    } else if (arg == "--left-offset-x-mm") {
+      config.geometry.mounts[1].offset_x_mm = std::stod(need_value("--left-offset-x-mm"));
+    } else if (arg == "--left-offset-y-mm") {
+      config.geometry.mounts[1].offset_y_mm = std::stod(need_value("--left-offset-y-mm"));
+    } else if (arg == "--left-heading-deg") {
+      config.geometry.mounts[1].heading_offset_deg = std::stod(need_value("--left-heading-deg"));
+    } else if (arg == "--right-offset-x-mm") {
+      config.geometry.mounts[2].offset_x_mm = std::stod(need_value("--right-offset-x-mm"));
+    } else if (arg == "--right-offset-y-mm") {
+      config.geometry.mounts[2].offset_y_mm = std::stod(need_value("--right-offset-y-mm"));
+    } else if (arg == "--right-heading-deg") {
+      config.geometry.mounts[2].heading_offset_deg = std::stod(need_value("--right-heading-deg"));
+    } else if (arg == "--corroboration-band-main-deg") {
+      config.corroboration.main_boundary_band_deg =
+          std::stod(need_value("--corroboration-band-main-deg"));
+    } else if (arg == "--corroboration-band-flank-deg") {
+      config.corroboration.flank_inward_band_deg =
+          std::stod(need_value("--corroboration-band-flank-deg"));
+    } else if (arg == "--corroboration-tolerance-mm") {
+      config.corroboration.match_distance_tolerance_mm =
+          std::stod(need_value("--corroboration-tolerance-mm"));
+    } else if (arg == "--corroboration-window-ms") {
+      config.corroboration.match_time_window =
+          std::chrono::milliseconds(std::stoi(need_value("--corroboration-window-ms")));
+    } else if (arg == "--max-range-mm") {
+      config.corroboration.max_valid_distance_mm = std::stod(need_value("--max-range-mm"));
     } else if (arg == "--help" || arg == "-h") {
       print_usage(argv[0]);
       std::exit(0);
@@ -236,14 +281,41 @@ int main(int argc, char **argv) {
     std::thread ingest_thread = start_ingest_thread(*source, shared);
     JoinThreadOnExit join_ingest{ingest_thread};
 
-    radar::SweepBuilder sweeps;
+    std::array<radar::SweepBuilder, radar::kNumSensors> sweep_builders;
+    radar::Corroborator corroborator(config.geometry, config.corroboration);
     radar::GpuMti mti;
     radar::RenderState render_state;
     render_state.source_name = source_name;
+    render_state.geometry = config.geometry;
 
     std::uint64_t completed_sweeps = 0;
     std::uint64_t completed_cycles = 0;
-    std::vector<radar::MotionVector> latest_vectors;
+    std::array<std::vector<radar::MotionVector>, radar::kNumSensors> latest_vectors_by_sensor;
+
+    auto rebuild_combined_render_points = [&]() {
+      render_state.current_points.clear();
+      render_state.history_points.clear();
+      for (const radar::SweepBuilder &builder : sweep_builders) {
+        if (const auto &current = builder.current_sweep()) {
+          render_state.current_points.insert(render_state.current_points.end(),
+                                             current->points.begin(),
+                                             current->points.end());
+        }
+        std::vector<radar::RadarPoint> hist =
+            combined_history(builder.last_forward_sweep(), builder.last_return_sweep());
+        render_state.history_points.insert(render_state.history_points.end(),
+                                           hist.begin(), hist.end());
+      }
+    };
+
+    auto rebuild_vectors = [&]() {
+      render_state.vectors.clear();
+      for (const std::vector<radar::MotionVector> &vectors : latest_vectors_by_sensor) {
+        render_state.vectors.insert(render_state.vectors.end(), vectors.begin(),
+                                    vectors.end());
+      }
+      render_state.stats.vector_count = render_state.vectors.size();
+    };
 
     while (g_running) {
       std::deque<radar::TelemetryPoint> batch;
@@ -268,20 +340,28 @@ int main(int argc, char **argv) {
 
       for (const radar::TelemetryPoint &telemetry : batch) {
         render_state.stats.protocol = protocol_counters;
-        render_state.sweep_angle_deg = telemetry.angle_deg;
 
-        if (telemetry.distance_mm == 0) {
+        if (telemetry.sensor_id >= radar::kNumSensors || telemetry.distance_mm == 0) {
           continue;
         }
 
-        std::optional<radar::CompletedSweepEvent> event =
-            sweeps.ingest(telemetry);
-        if (const auto &current = sweeps.current_sweep()) {
-          render_state.current_points = current->points;
-        }
-        render_state.history_points =
-            combined_history(sweeps.last_forward_sweep(),
-                             sweeps.last_return_sweep());
+        render_state.sweep_angle_by_sensor[telemetry.sensor_id] = telemetry.angle_deg;
+
+        radar::RadarPoint built_point;
+        built_point.angle_deg = telemetry.angle_deg;
+        built_point.distance_mm = telemetry.distance_mm;
+        built_point.timestamp = radar::RadarClock::now();
+        built_point.sequence = telemetry.sequence;
+        built_point.sensor_id = telemetry.sensor_id;
+
+        // Cross-sensor corroboration ("double check") runs before the point
+        // enters its sweep builder, so the confirmation state it sets is
+        // baked into the RadarPoint that ends up stored in the Sweep.
+        const radar::WorldPoint world = corroborator.update(built_point);
+
+        radar::SweepBuilder &builder = sweep_builders[telemetry.sensor_id];
+        std::optional<radar::CompletedSweepEvent> event = builder.ingest(world.source);
+        rebuild_combined_render_points();
 
         if (!event) {
           continue;
@@ -291,29 +371,32 @@ int main(int argc, char **argv) {
         render_state.stats.completed_sweeps = completed_sweeps;
 
         if (event->previous_opposite) {
-          latest_vectors =
-              mti.compute(*event->previous_opposite, event->completed,
-                          config.tau_mm);
-          render_state.vectors = latest_vectors;
-          render_state.stats.vector_count = latest_vectors.size();
+          latest_vectors_by_sensor[telemetry.sensor_id] =
+              mti.compute(*event->previous_opposite, event->completed, config.tau_mm);
+          rebuild_vectors();
         }
 
         if (!event->completed_bidirectional_cycle) {
-          std::cout << "Sweep " << event->completed.id << " complete ("
+          std::cout << "Sensor " << static_cast<int>(telemetry.sensor_id) << " sweep "
+                    << event->completed.id << " complete ("
                     << radar::to_string(event->completed.direction) << ", "
                     << event->completed.points.size() << " points)\n";
           continue;
         }
 
-        completed_cycles = event->cycle_index;
+        // A combined frame renders whenever ANY one sensor completes a
+        // bidirectional cycle. All three heads sweep the same 0-120 deg arc,
+        // but their cadences drift independently (sensor timeouts and missed
+        // steps shift each head's phase), so they don't stay in lockstep --
+        // hence the any-sensor-completes trigger, using the freshest state
+        // from all 3 builders.
+        ++completed_cycles;
         render_state.stats.completed_cycles = completed_cycles;
-        render_state.current_points = event->completed.points;
-        render_state.history_points =
-            combined_history(sweeps.last_forward_sweep(),
-                             sweeps.last_return_sweep());
+        rebuild_combined_render_points();
 
-        std::cout << "Cycle " << completed_cycles << " complete: "
-                  << latest_vectors.size() << " MTI vectors, "
+        std::cout << "Cycle " << completed_cycles << " complete (sensor "
+                  << static_cast<int>(telemetry.sensor_id) << "): "
+                  << render_state.vectors.size() << " MTI vectors, "
                   << protocol_counters.valid_frames << " valid frames\n";
 
         if (!config.no_render) {

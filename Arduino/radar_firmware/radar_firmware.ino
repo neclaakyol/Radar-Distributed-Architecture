@@ -28,10 +28,13 @@
 #define BAUD_RATE 38400
 #define SYNC_BYTE_1 0xAA
 #define SYNC_BYTE_2 0x55
-// Start handshake: servos idle (parked, no sweep, no telemetry) until the
-// backend sends this byte over UART on connect. Matches the start command the
-// backend emits in backend/src/serial_source.cpp.
+// Start/stop handshake: servos idle (parked, no sweep, no telemetry) until the
+// backend sends START_COMMAND_BYTE. On connection close the backend sends
+// STOP_COMMAND_BYTE: sweeping halts, all heads return to minAngle, and the
+// firmware re-enters the idle wait so the next connect can restart cleanly.
+// Both bytes must match the constants in backend/src/serial_source.cpp.
 #define START_COMMAND_BYTE 0x53  // 'S'
+#define STOP_COMMAND_BYTE  0x58  // 'X'
 #define HCSR04_TIMEOUT_US 30000UL
 #define SENSOR_SETTLE_DELAY_MS 5
 #define SERVO_STEP_DELAY_MS 15
@@ -128,57 +131,77 @@ static void waitForStartCommand() {
 
 // --- Task 1: Scan Coordinator ---
 // Round-robin: read main -> left -> right, pack RawData3, advance all 3 servos.
+// Outer loop handles the full connection lifecycle: home → idle → sweep → home.
+// When the backend disconnects it sends STOP_COMMAND_BYTE; the sweep loop breaks,
+// all heads return to minAngle, and the task re-enters waitForStartCommand() so
+// the next connect starts cleanly without a firmware reboot.
 void TaskScanCoordinator(void *pvParameters) {
   (void) pvParameters;
 
-  // Drive every head to its start angle (minAngle) and give it time to physically
-  // travel there. The Servo library keeps pulsing on Timer1, so the heads are
-  // actively held at the start position -- not floating -- for the whole wait.
-  for (uint8_t i = 0; i < 3; i++) {
-    channels[i].angle = channels[i].minAngle;
-    channels[i].sweepingForward = true;
-    channels[i].servo.attach(channels[i].servoPin);
-    channels[i].servo.write(channels[i].angle);
-  }
-  vTaskDelay(MS_TO_TICKS_ROUNDED(500));  // settle at start position before idling
-
-  // Hold at the start position until the backend connects and sends the start
-  // command. While we block, the security/UART tasks sit empty (no data is
-  // queued), so the whole pipeline stays quiet and the heads stay put at start.
-  waitForStartCommand();
-
-  uint8_t cycleCounter = 0;
-  RawData3 data;
-
-  for (;;) {
-    // Read all 3 channels; brief settle gap between triggers to avoid acoustic crosstalk.
+  for (;;) {  // connection lifecycle: home -> wait -> sweep -> home -> ...
+    // Drive every head to its start angle (minAngle) and give it time to physically
+    // travel there. The Servo library keeps pulsing on Timer1, so the heads are
+    // actively held at the start position -- not floating -- for the whole wait.
     for (uint8_t i = 0; i < 3; i++) {
-      channels[i].lastDistance = read_sensor_distance_mm(channels[i].trigPin, channels[i].echoPin);
-      channels[i].lastTimeout  = (channels[i].lastDistance == 0);
-      data.angles[i]    = channels[i].angle;
-      data.distances[i] = channels[i].lastDistance;
-      data.timeouts[i]  = channels[i].lastTimeout;
-      if (i < 2) {
-        vTaskDelay(MS_TO_TICKS_ROUNDED(SENSOR_SETTLE_DELAY_MS));
-      }
-    }
-
-    data.cycleCounter = cycleCounter++;
-    xQueueSend(rawDataQueue, &data, (TickType_t)5);
-
-    // Advance each channel's angle independently, then write servos simultaneously.
-    for (uint8_t i = 0; i < 3; i++) {
-      if (channels[i].sweepingForward) {
-        channels[i].angle++;
-        if (channels[i].angle >= channels[i].maxAngle) channels[i].sweepingForward = false;
-      } else {
-        channels[i].angle--;
-        if (channels[i].angle <= channels[i].minAngle) channels[i].sweepingForward = true;
-      }
+      channels[i].angle = channels[i].minAngle;
+      channels[i].sweepingForward = true;
+      channels[i].servo.attach(channels[i].servoPin);
       channels[i].servo.write(channels[i].angle);
     }
+    vTaskDelay(MS_TO_TICKS_ROUNDED(500));  // settle at start position before idling
 
-    vTaskDelay(MS_TO_TICKS_ROUNDED(SERVO_STEP_DELAY_MS));
+    // Hold at the start position until the backend connects and sends the start
+    // command. While we block, the security/UART tasks sit empty (no data is
+    // queued), so the whole pipeline stays quiet and the heads stay put at start.
+    waitForStartCommand();
+
+    uint8_t cycleCounter = 0;
+    RawData3 data;
+
+    for (;;) {  // sweep loop — exits on STOP_COMMAND_BYTE
+      // Drain RX buffer; any STOP_COMMAND_BYTE breaks the sweep.
+      bool stopReceived = false;
+      while (Serial.available() > 0) {
+        if (Serial.read() == STOP_COMMAND_BYTE) { stopReceived = true; break; }
+      }
+      if (stopReceived) break;
+
+      // Read all 3 channels; brief settle gap between triggers to avoid acoustic crosstalk.
+      for (uint8_t i = 0; i < 3; i++) {
+        channels[i].lastDistance = read_sensor_distance_mm(channels[i].trigPin, channels[i].echoPin);
+        channels[i].lastTimeout  = (channels[i].lastDistance == 0);
+        data.angles[i]    = channels[i].angle;
+        data.distances[i] = channels[i].lastDistance;
+        data.timeouts[i]  = channels[i].lastTimeout;
+        if (i < 2) {
+          vTaskDelay(MS_TO_TICKS_ROUNDED(SENSOR_SETTLE_DELAY_MS));
+        }
+      }
+
+      data.cycleCounter = cycleCounter++;
+      xQueueSend(rawDataQueue, &data, (TickType_t)5);
+
+      // Advance each channel's angle independently, then write servos simultaneously.
+      for (uint8_t i = 0; i < 3; i++) {
+        if (channels[i].sweepingForward) {
+          channels[i].angle++;
+          if (channels[i].angle >= channels[i].maxAngle) channels[i].sweepingForward = false;
+        } else {
+          channels[i].angle--;
+          if (channels[i].angle <= channels[i].minAngle) channels[i].sweepingForward = true;
+        }
+        channels[i].servo.write(channels[i].angle);
+      }
+
+      vTaskDelay(MS_TO_TICKS_ROUNDED(SERVO_STEP_DELAY_MS));
+    }
+    // Stop received: return all heads to minAngle before re-entering idle wait.
+    for (uint8_t i = 0; i < 3; i++) {
+      channels[i].angle = channels[i].minAngle;
+      channels[i].sweepingForward = true;
+      channels[i].servo.write(channels[i].angle);
+    }
+    vTaskDelay(MS_TO_TICKS_ROUNDED(500));  // settle at home before next wait
   }
 }
 

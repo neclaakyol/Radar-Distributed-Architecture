@@ -28,6 +28,13 @@ namespace {
 constexpr std::uint8_t kStartCommandByte = 0x53; // 'S'
 constexpr int kStartCommandRepeats = 8;
 constexpr std::chrono::milliseconds kStartCommandInterval{300};
+
+// On disconnect the firmware breaks out of its sweep loop, returns all heads to
+// minAngle, and re-enters waitForStartCommand() — ready for the next connect.
+// Must match STOP_COMMAND_BYTE in Arduino/radar_firmware/radar_firmware.ino.
+constexpr std::uint8_t kStopCommandByte = 0x58; // 'X'
+constexpr int kStopCommandRepeats = 3;
+constexpr std::chrono::milliseconds kStopCommandInterval{50};
 } // namespace
 
 #ifdef _WIN32
@@ -97,6 +104,11 @@ SerialByteSource::SerialByteSource(std::string port_name, int baud_rate)
 
 SerialByteSource::~SerialByteSource() {
   if (impl_ && impl_->handle != INVALID_HANDLE_VALUE) {
+    for (int i = 0; i < kStopCommandRepeats; ++i) {
+      DWORD written = 0;
+      WriteFile(impl_->handle, &kStopCommandByte, 1, &written, nullptr);
+      std::this_thread::sleep_for(kStopCommandInterval);
+    }
     CloseHandle(impl_->handle);
     impl_->handle = INVALID_HANDLE_VALUE;
   }
@@ -191,6 +203,10 @@ SerialByteSource::SerialByteSource(std::string port_name, int baud_rate)
 
 SerialByteSource::~SerialByteSource() {
   if (impl_ && impl_->fd >= 0) {
+    for (int i = 0; i < kStopCommandRepeats; ++i) {
+      write(impl_->fd, &kStopCommandByte, 1);
+      std::this_thread::sleep_for(kStopCommandInterval);
+    }
     close(impl_->fd);
     impl_->fd = -1;
   }

@@ -7,7 +7,7 @@
   - 2x HC-SR04 ultrasonic distance sensors
   - 1x HY-SRF05 (mode-select pin left unconnected → trig/echo mode, identical
     timing to HC-SR04, so one read routine drives all three)
-- Servos: 3x SG90 micro servos
+- Servos: 3x MG90S micro servos
 - Edge node: Jetson Nano (or another Linux/Windows host) running the backend
 - Display: HDMI display attached to the edge node (optional; backend also runs
   headless and writes PBM frames)
@@ -28,10 +28,13 @@
 
 Power notes:
 
-- Drive the three SG90 servos from an **external regulated 5 V supply**, not the
-  Arduino 5 V pin, and tie that supply's ground to the Arduino ground. Three
-  servos moving together will brown out the Uno's onboard regulator.
-- Sensors run on 5 V with a shared ground.
+- Drive the three MG90S servos from an **external regulated 5 V / 3 A supply**
+  (breadboard rail), not the Arduino 5 V pin, and tie that supply's ground to the
+  Arduino ground. Three servos moving together will brown out the Uno's onboard
+  regulator.
+- The Arduino Uno itself is powered from a 9 V battery (barrel jack), and the
+  Jetson Nano from its own 5 V DC adapter.
+- Sensors run on the 5 V breadboard rail with a shared ground.
 - The HY-SRF05 mode pin is left unconnected (trig/echo mode).
 
 ## Firmware

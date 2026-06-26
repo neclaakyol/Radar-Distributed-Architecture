@@ -399,12 +399,27 @@ int main(int argc, char **argv) {
                   << render_state.vectors.size() << " MTI vectors, "
                   << protocol_counters.valid_frames << " valid frames\n";
 
+        // Metric 2 (MTI displacement accuracy): emit the magnitude, speed, and
+        // heading of every matched motion vector so a known physical target
+        // displacement can be compared against the computed value.
+        for (const radar::MotionVector &vector : render_state.vectors) {
+          std::cout << "  vector: disp=" << vector.displacement_mm << " mm, speed="
+                    << vector.speed_mm_s << " mm/s, heading=" << vector.heading_deg
+                    << " deg\n";
+        }
+
         if (!config.no_render) {
+          // Metric 3 (PBM logging latency): time framebuffer capture through
+          // file write so the per-cycle logging overhead can be measured.
+          const auto log_start = std::chrono::steady_clock::now();
           const radar::RgbaFrame frame = software_renderer.render(render_state);
           const std::filesystem::path output =
               pbm_path(config.log_dir, completed_cycles);
           radar::write_pbm(output, frame, config.threshold);
-          std::cout << "Wrote " << output.string() << "\n";
+          const auto log_end = std::chrono::steady_clock::now();
+          const double log_ms =
+              std::chrono::duration<double, std::milli>(log_end - log_start).count();
+          std::cout << "Wrote " << output.string() << " (" << log_ms << " ms)\n";
         }
       }
 

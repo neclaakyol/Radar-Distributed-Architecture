@@ -232,9 +232,9 @@ void setup() {
 
   // Channel 0 — main head, HC-SR04, 0-120° sweep (servo D10, trig D2, echo D3).
   channels[0].id             = 0;
-  channels[0].servoPin       = 10;
-  channels[0].trigPin        = 2;
-  channels[0].echoPin        = 3;
+  channels[0].servoPin       = 12;
+  channels[0].trigPin        = 6;
+  channels[0].echoPin        = 7;
   channels[0].angle          = 0;
   channels[0].minAngle       = 0;
   channels[0].maxAngle       = 120;
@@ -256,9 +256,9 @@ void setup() {
 
   // Channel 2 — right head, HY-SRF05 (mode pin unconnected → trig/echo mode, same timing as HC-SR04), 0-120°.
   channels[2].id             = 2;
-  channels[2].servoPin       = 12;
-  channels[2].trigPin        = 6;
-  channels[2].echoPin        = 7;
+  channels[2].servoPin       = 10;
+  channels[2].trigPin        = 2;
+  channels[2].echoPin        = 3;
   channels[2].angle          = 0;
   channels[2].minAngle       = 0;
   channels[2].maxAngle       = 120;

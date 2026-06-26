@@ -20,6 +20,8 @@
 \usepackage{natbib}
 \usepackage{pgfgantt}
 \usepackage{rotating}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit, backgrounds}
 
 
 \topmargin      0.0in
@@ -48,16 +50,21 @@
 %	\includegraphics[ scale = 0.35]{iyte_logo} 
 %\end{figure}
 
-\textbf{ Group Members}
-\begin{itemize}
-	\item Mete Akın Akdoğan  \& 290201005
-	\item Yiğit Sarıyar \& 290201053
-	\item Meriç Kelemeden \& 290201091 
-    \item Necla Akyol \& 300201038 
-	\item Yusuf Celal Zeybek \& 310201105
-
-
-\end{itemize}
+\begin{center}
+\textbf{Group Members}\\[0.8em]
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{|l|c|}
+\hline
+\textbf{Name} & \textbf{Student ID} \\
+\hline
+Mete Akın Akdoğan   & 290201005 \\
+Yiğit Sarıyar       & 290201053 \\
+Meriç Kelemeden     & 290201091 \\
+Necla Akyol         & 300201038 \\
+Yusuf Celal Zeybek  & 310201105 \\
+\hline
+\end{tabular}
+\end{center}
 
 
 
@@ -88,7 +95,7 @@ ESC/POS commands to a Bluetooth thermal printer, outputting a physical raster
 bitmap of the radar map that serves as a tamper-evident tactical log
 independent of any persistent storage medium.
 \fi
-This project proposes a secure, dual-node embedded radar system designed for real-time environment scanning and \textbf{Moving Target Indication (MTI).} To overcome the latency and processing bottlenecks of traditional single-node static scanners, we introduce a distributed Track-While-Scan (TWS) architecture. The first node, an Arduino Uno governed by FreeRTOS, functions as a hard real-time mechanical scanning unit. It performs 180-degree bidirectional sweeps using a distance sensor, encrypts the telemetry via the \textbf{XTEA} cipher, applies \textbf{CRC-16} validation, and transmits the payload over an interrupt-driven \textbf{UART} interface. The second node, an \textbf{NVIDIA Jetson Nano} edge device, ingests this stream using a custom C++ backend. To achieve high-fidelity visualization, the system leverages the \textbf{Vulkan API}, offloading spatial correlation to Compute Shaders to match targets across sweeps. The resulting velocity vectors and coordinate data are rendered at 60+ FPS into a cinematic, WWII-era 3D Plan Position Indicator (PPI) interface. Finally, the system extracts the Vulkan framebuffer, applies 1-bit luminance thresholding, and dispatches a physical raster bitmap log via a direct USB connection to a thermal receipt printer. Ultimately, this project delivers a comprehensive cyber-physical system, bridging hard real-time embedded data acquisition with low-level GPU-accelerated edge processing.
+This project proposes a secure, dual-node embedded radar system designed for real-time environment scanning and \textbf{Moving Target Indication (MTI).} To overcome the latency and processing bottlenecks of traditional single-node static scanners, we introduce a distributed Track-While-Scan (TWS) architecture. The first node, an Arduino Uno governed by FreeRTOS, functions as a hard real-time mechanical scanning unit. It performs 180-degree bidirectional sweeps using a distance sensor, encrypts the telemetry via the \textbf{XTEA} cipher, applies \textbf{CRC-16} validation, and transmits the payload over an interrupt-driven \textbf{UART} interface. The second node, an \textbf{NVIDIA Jetson Nano} edge device, ingests this stream using a custom C++ backend. To achieve high-fidelity visualization, the system leverages the \textbf{Vulkan API}, offloading spatial correlation to Compute Shaders to match targets across sweeps. The resulting velocity vectors and coordinate data are rendered at 60+ FPS into a WWII-era 2D Plan Position Indicator (PPI) interface. Finally, the system extracts the Vulkan framebuffer, applies 1-bit luminance thresholding, and saves the resulting Portable Bitmap (PBM) file to the logs directory as a persistent record of each completed bidirectional cycle. Ultimately, this project delivers a comprehensive cyber-physical system, bridging hard real-time embedded data acquisition with low-level GPU-accelerated edge processing.
 
 
 \cleardoublepage
@@ -110,7 +117,7 @@ properly separated across a distributed node topology.
 The physical layer is handled solely by an Arduino microcontroller responsible
 for servo actuation and US-100 ultrasonic sensor polling. All computationally
 intensive work --- XTEA decryption, spatial correlation, graphical rendering,
-and direct USB print dispatch --- is offloaded to an NVIDIA Jetson Nano edge
+and PBM file logging --- is offloaded to an NVIDIA Jetson Nano edge
 device running Ubuntu. A custom, secure UART protocol with XTEA encryption and
 CRC-16 validation bridges the two nodes, ensuring telemetry integrity without
 exceeding the timing budget of the 8-bit sensor node. This separation of
@@ -150,7 +157,8 @@ correlates the forward sweep buffer with the return sweep buffer to compute
 displacement vectors $\vec{d}_i = \hat{b}_i - a_i$, giving operators
 directional and speed cues in addition to raw positional data. The resulting
 motion vectors are rendered as scaled arrows on the PPI and preserved as a
-physical thermal printout at the end of each bidirectional cycle.
+Portable Bitmap (PBM) file written to the logs directory at the end of each
+bidirectional cycle.
 
 
 
@@ -240,18 +248,15 @@ serial protocol that provides telemetry integrity without exceeding the
 timing budget of an 8-bit sensor node; (2)~a Nearest-Neighbor Euclidean
 spatial correlation algorithm running on the Jetson Nano that derives
 motion vectors from consecutive half-PPI sweeps and renders them as
-directional arrows on a real-time PPI display; and (3)~an ESC/POS thermal
-printing pipeline that captures and thresholds the PPI framebuffer into a
-physical bitmap log --- an output mechanism entirely absent in existing
-embedded radar literature.
+directional arrows on a real-time PPI display; and (3)~a PBM file-logging pipeline that captures and thresholds the PPI
+framebuffer into a Portable Bitmap file written per cycle to the logs
+directory --- a persistent cycle-record mechanism absent in existing embedded
+radar literature.
 
 
 
 \section{System Architecture}
-To address the complexity of our distributed topology, the system is separated into three distinct operational domains: the Sensor Node (Hard Real-Time), the Edge Node (Soft Real-Time / GPU Accelerated), and the Output Interfaces. The Arduino Uno utilizes FreeRTOS to manage deterministic sensor polling and motor actuation, transmitting encrypted packets via UART. The Jetson Nano ingests this stream, utilizing a custom C++ backend and Vulkan API pipeline to offload spatial correlation to the GPU, rendering a WWII-era 3D radar interface dynamically. Finally, the processed framebuffer is extracted and dispatched via direct USB serial connection to a thermal printer for physical logging.
-\documentclass{article}
-\usepackage{tikz}
-\usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit, backgrounds}
+To address the complexity of our distributed topology, the system is separated into three distinct operational domains: the Sensor Node (Hard Real-Time), the Edge Node (Soft Real-Time / GPU Accelerated), and the Output Interfaces. The Arduino Uno utilizes FreeRTOS to manage deterministic sensor polling and motor actuation, transmitting encrypted packets via UART. The Jetson Nano ingests this stream, utilizing a custom C++ backend and Vulkan API pipeline to offload spatial correlation to the GPU, rendering a WWII-era 2D radar interface dynamically. Finally, the processed framebuffer is extracted, thresholded to 1-bit monochrome, and saved as a PBM file to the logs directory for persistent cycle-level logging.
 
 \begin{figure}[htbp]
 \centering
@@ -278,7 +283,7 @@ To address the complexity of our distributed topology, the system is separated i
 
 % --- NODE 2: EDGE COMPUTE NODE (JETSON NANO) ---
 \node[box, right=4cm of arduino] (jetson_core) {\textbf{NVIDIA Jetson Nano} \\ (C++20 \& Ubuntu)};
-\node[box, above=0.8cm of jetson_core] (vulkan) {\textbf{Vulkan API Pipeline} \\ \vspace{0.1cm} \hrule \vspace{0.1cm} - Compute Shaders (MTI) \\ - Fragment Shaders (3D)};
+\node[box, above=0.8cm of jetson_core] (vulkan) {\textbf{Vulkan API Pipeline} \\ \vspace{0.1cm} \hrule \vspace{0.1cm} - Compute Shaders (MTI) \\ - Fragment Shaders (2D)};
 
 \draw[arrow] (jetson_core) -- node[right, label] {Decrypted \\ Buffer} (vulkan);
 
@@ -287,21 +292,21 @@ To address the complexity of our distributed topology, the system is separated i
 
 % --- CONNECTION: UART ---
 \draw[arrow] (sensor_group.east |- jetson_core) -- 
-    node[above, label] {\textbf{UART (115200 baud)}} 
-    node[below, label] {12-byte Frames \\ XTEA Encrypted} 
+    node[above, label] {\textbf{UART (38400 baud)}}
+    node[below, label] {12-byte Frames \\ XTEA Encrypted}
     (edge_group.west |- jetson_core);
 
 
 % --- OUTPUT INTERFACES ---
-\node[box, right=3cm of vulkan] (hdmi) {HDMI Display \\ (WWII 3D Radar UI)};
-\node[box, right=3cm of jetson_core] (printer) {58mm Thermal Printer \\ (Raster Bitmap Log)};
+\node[box, right=3cm of vulkan] (hdmi) {HDMI Display \\ (WWII 2D Radar UI)};
+\node[box, right=3cm of jetson_core] (pbmlog) {PBM Log Files \\ (\texttt{logs/} directory)};
 
 \draw[arrow] (vulkan) -- node[above, label] {60+ FPS \\ Framebuffer} (hdmi);
-\draw[arrow] (jetson_core.east |- printer) -- 
-    node[above, label] {USB connection}
-    (printer);
+\draw[arrow] (jetson_core.east |- pbmlog) --
+    node[above, label] {1-bit threshold \\ per cycle}
+    (pbmlog);
 
-\node[group, fit=(hdmi) (printer), label=above:\textbf{Output Interfaces}] (output_group) {};
+\node[group, fit=(hdmi) (pbmlog), label=above:\textbf{Output Interfaces}] (output_group) {};
 
 \end{tikzpicture}
 }
@@ -311,7 +316,7 @@ To address the complexity of our distributed topology, the system is separated i
 
 \section{Stages}
 
-The development of this distributed radar simulation is conducted in five primary stages. All five team members contribute to each stage as detailed below.
+The development of this distributed radar simulation is conducted in four primary stages. All five team members contribute to each stage as detailed below.
 
 \textbf{Stage 1 --- RTOS-Based Secure Sensor Node (Arduino)} \\
 This stage overhauls the traditional "super-loop" architecture by implementing a Real-Time Operating System (FreeRTOS) to manage concurrent hardware tasks deterministically.
@@ -343,24 +348,14 @@ This stage executes the spatial correlation to convert sweep data into motion ve
     \item \textbf{Yusuf Celal Zeybek:} Handles the polar-to-Cartesian coordinate conversion.
 \end{itemize}
 
-\textbf{Stage 4 --- Vulkan-Accelerated 3D MTI Rendering} \\
-This stage replaces high-level 2D libraries with a low-level, high-performance C++20 and Vulkan API graphics pipeline.
+\textbf{Stage 4 --- Vulkan-Accelerated 2D MTI Rendering} \\
+This stage replaces high-level 2D libraries with a low-level, high-performance C++20 and Vulkan API graphics pipeline. Upon completing each bidirectional sweep cycle, the rendered framebuffer is automatically captured, thresholded to 1-bit monochrome, and saved as a PBM file to the \texttt{logs/} directory.
 \begin{itemize}
     \item \textbf{Mete Akın Akdoğan:} Implements the Vulkan instance, physical device selection, and swapchain configuration.
-    \item \textbf{Yiğit Sarıyar:} Develops the linear interpolation (lerp) algorithms to smoothly rotate the 3D camera and radar sweep-line at 60+ FPS.
+    \item \textbf{Yiğit Sarıyar:} Develops the linear interpolation (lerp) algorithms to smoothly animate the 2D sweep-line at 60+ FPS.
     \item \textbf{Meriç Kelemeden:} Writes Vulkan Compute Shaders to parallelize the Nearest-Neighbor (NN) spatial correlation directly on the GPU.
-    \item \textbf{Necla Akyol:} Creates the WWII-themed 3D models and handles coordinate transformations.
+    \item \textbf{Necla Akyol:} Creates the WWII-themed 2D graphical assets and handles coordinate transformations.
     \item \textbf{Yusuf Celal Zeybek:} Implements Fragment Shaders to generate realistic CRT phosphor glow, target blip fade-out effects, and motion vector trails.
-\end{itemize}
-
-\textbf{Stage 5 --- Graphical Raster Logging} \\
-This stage integrates the thermal printer via direct cable to produce physical tactical logs.
-\begin{itemize}
-    \item \textbf{Mete Akın Akdoğan:} Captures the active Vulkan framebuffer to main memory.
-    \item \textbf{Yiğit Sarıyar:} Applies luminance thresholding to create a 1-bit monochrome bitmap.
-    \item \textbf{Meriç Kelemeden:} Handles ESC/POS serial transmission over USB and legibility testing.
-    \item \textbf{Necla Akyol:} Designs the physical print layout and metadata header.
-    \item \textbf{Yusuf Celal Zeybek:} Integrates asynchronous printing threads and measures print latency.
 \end{itemize}
 
 \section{Tools, Software, Hardware}
@@ -370,8 +365,7 @@ This stage integrates the thermal printer via direct cable to produce physical t
     \item 1$\times$ \textbf{NVIDIA Jetson Nano} --- Edge Node. Its Maxwell GPU backend executes the Vulkan graphics, compute pipelines and .
     \item 1$\times$ \textbf{US-100 Ultrasonic Distance Sensor}.
     \item 1$\times$ \textbf{MG90S 180\textdegree{} Metal-Gear Micro Servo}.
-    \item 1$\times$ \textbf{58\,mm USB Thermal Receipt Printer} --- for physical raster tactical logging
-    \item 1$\times$ \textbf{HDMI display} for Jetson Nano 3D output.
+    \item 1$\times$ \textbf{HDMI display} for Jetson Nano 2D output.
     \item \textbf{Miniature foam-block target objects} ($5\times5$\,cm cross-section) for experimental trials.
     \item 1$\times$ \textbf{External Power Distribution Unit} A dedicated 5V/4A external power supply combined with a DC-DC buck converter. The servo motor power lines are strictly isolated from the Arduino logic pins to prevent voltage droops (brownouts) and electromagnetic interference (EMI) during rapid actuation.
 \end{itemize}
@@ -379,9 +373,9 @@ This stage integrates the thermal printer via direct cable to produce physical t
 \textbf{Software and Protocols:}
 \begin{itemize}
     \item \textbf{Sensor Node (C++ / FreeRTOS):} AVR GCC compiler, FreeRTOS kernel for task scheduling, custom interrupt-driven UART drivers, XTEA cryptography, CRC-16 (CCITT polynomial \texttt{0x1021}).
-    \item \textbf{Edge Node (C++20 / Linux):} Vulkan SDK (for GPU-accelerated rendering and compute), GLM (OpenGL Mathematics for 3D vector transformations), GLFW (for window management), and POSIX \texttt{termios} for serial interfacing.
-    \item \textbf{UART:} 115200\,baud, 8N1, fixed 12-byte frames (Arduino $\leftrightarrow$ Jetson Nano).
-    \item \textbf{Direct Serial (USB):} Hardwired ESC/POS transport between the Jetson Nano and the thermal printer, ensuring high reliability in noisy environments.
+    \item \textbf{Edge Node (C++20 / Linux):} Vulkan SDK (for GPU-accelerated rendering and compute), GLM (OpenGL Mathematics for 2D/3D coordinate transformations), GLFW (for window management), and POSIX \texttt{termios} for serial interfacing.
+    \item \textbf{UART:} 38400\,baud, 8N1, fixed 12-byte frames (Arduino $\leftrightarrow$ Jetson Nano).
+    \item \textbf{PBM File Logging:} Each completed bidirectional cycle is saved as a 1-bit Portable Bitmap (\texttt{.pbm}) file to the \texttt{logs/} directory on the Jetson Nano.
 \end{itemize}
 
 \section{Experiments \& Results, Test Phases}
@@ -415,15 +409,16 @@ false-matching (5 trials).
 all 30 single-target trials; 100\% correct association in the multi-target
 test.
 
-\textbf{Metric 3 --- Print Latency and Image Fidelity.}
-The elapsed time from Vulkan framebuffer extraction to thermal printer
-transmission completion will be measured using \texttt{time.perf\_counter}
-over 10 consecutive print cycles. Five printed outputs will be visually
-inspected and each rendered blip and arrow will be scored on a binary
-legibility scale (pass/fail).
-\textit{Target criterion:} Total print latency $\leq 5\,\text{s}$, ensuring
-that printing does not delay the subsequent sweep by more than one inter-sweep
-interval; blip and arrow legibility $\geq 90\%$ across inspected prints.
+\textbf{Metric 3 --- PBM File Write Latency and Image Fidelity.}
+The elapsed time from Vulkan framebuffer extraction to PBM file write
+completion will be measured using \texttt{time.perf\_counter} over 10
+consecutive cycles. Five saved PBM files will be visually inspected and each
+rendered blip and arrow will be scored on a binary legibility scale
+(pass/fail).
+\textit{Target criterion:} Total file write latency $\leq 1\,\text{s}$,
+ensuring that logging does not delay the subsequent sweep by more than one
+inter-sweep interval; blip and arrow legibility $\geq 90\%$ across inspected
+output files.
 
 \section{Weekly Schedule}
 
@@ -473,19 +468,12 @@ interval; blip and arrow legibility $\geq 90\%$ across inspected prints.
     \ganttbar[name=tau]{Yusuf: Polar-to-Cartesian conversion}{9}{10} \\
     \ganttmilestone[name=m3]{Milestone: Mean error $\leq$2\,cm confirmed}{10} \\
 
-    \ganttgroup{Stage 4 -- Vulkan-Accelerated 3D Rendering}{7}{12} \\
+    \ganttgroup{Stage 4 -- Vulkan-Accelerated 2D Rendering}{7}{13} \\
     \ganttbar[name=bg]{Akın: Vulkan instance \& swapchain}{7}{8} \\
-    \ganttbar[name=sweep]{Yigit: Camera lerp algorithms (60 FPS)}{8}{9} \\
+    \ganttbar[name=sweep]{Yigit: Sweep-line lerp animations (60 FPS)}{8}{9} \\
     \ganttbar[name=blip]{Meric: Compute Shaders for MTI}{9}{10} \\
-    \ganttbar[name=arrow]{Necla: WWII 3D models \& transforms}{10}{11} \\
-    \ganttbar[name=hud]{Yusuf: Fragment Shaders (CRT effects)}{11}{12} \\
-
-    \ganttgroup{Stage 5 -- Raster Logging}{11}{13} \\
-    \ganttbar[name=cap]{Akın: Vulkan framebuffer extraction}{11}{12} \\
-    \ganttbar[name=thr]{Yigit: Luminance to 1-bit thresholding}{11}{12} \\
-    \ganttbar[name=esc]{Meric: ESC/POS USB transmission}{12}{13} \\
-    \ganttbar[name=lay]{Necla: Print layout + metadata header block}{12}{13} \\
-    \ganttbar[name=async]{Yusuf: Async thread integration + latency test}{12}{13} \\
+    \ganttbar[name=arrow]{Necla: WWII 2D graphical assets \& transforms}{10}{11} \\
+    \ganttbar[name=hud]{Yusuf: Fragment Shaders (CRT effects)}{11}{13} \\
 
     \ganttgroup{Integration \& Report}{13}{14} \\
     \ganttbar[name=int]{Full system integration + metric evaluation}{13}{14} \\
@@ -498,8 +486,7 @@ interval; blip and arrow legibility $\geq 90\%$ across inspected prints.
     \ganttlink{buf}{cart}
     \ganttlink{phase}{nn}
     \ganttlink{vec}{arrow}
-    \ganttlink{hud}{cap}
-    \ganttlink{async}{int}
+    \ganttlink{hud}{int}
 \end{ganttchart}
 }
 \caption{Gantt chart of the weekly project schedule. Each bar is labelled
@@ -507,6 +494,17 @@ with the responsible team member. Red diamonds denote verifiable milestones
 with quantitative acceptance criteria.}
 \label{fig:gantt}
 \end{figure}
+
+\newpage
+\section{Future Work}
+
+Several directions can extend this system beyond the current prototype.
+
+\textbf{Upgraded Sensor Node.} The Arduino Uno (ATmega328P, 16\,MHz, 2\,KB SRAM) imposes tight timing and memory constraints that limit sweep resolution and the number of concurrent FreeRTOS tasks. Migrating to a 32-bit microcontroller --- such as an STM32F4, Arduino Due, or Raspberry Pi Pico --- would allow higher baud rates, more complex encryption, and additional concurrent tasks without compromising real-time deadlines.
+
+\textbf{Extended Sensor Range.} Replacing the US-100 ultrasonic module with a Time-of-Flight LiDAR unit would push the detection range beyond 4\,m and reduce susceptibility to acoustic interference, enabling more realistic field trials.
+
+\textbf{Multi-Target Scaling.} The Nearest-Neighbor algorithm is adequate for sparse scenarios but degrades as target density grows. Replacing it with the Hungarian algorithm for optimal assignment would maintain tracking accuracy in high-density environments.
 
 \newpage
 \bibliographystyle{chicago}

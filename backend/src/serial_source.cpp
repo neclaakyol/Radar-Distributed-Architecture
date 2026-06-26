@@ -1,4 +1,5 @@
 #include "radar/io.hpp"
+#include "radar/protocol.hpp"
 
 #include <chrono>
 #include <stdexcept>
@@ -19,15 +20,19 @@
 namespace radar {
 
 // Start handshake. The firmware idles (servos parked, no sweep, no telemetry)
-// until it receives this byte. It is sent repeatedly across a short window after
-// opening the port: opening pulses DTR and reboots the Uno, which then spends
-// ~2 s in its bootloader before the sketch starts reading, so a single send
-// could be lost. The firmware ignores extra copies once it has started.
+// until it receives this byte. Opening the port pulses DTR and reboots the Uno,
+// which then spends a *variable* ~0.5-2 s (occasionally more) in its bootloader
+// before the sketch starts reading -- so a fixed burst of sends can finish
+// before the firmware is listening and the START is lost, leaving it stuck in
+// waitForStartCommand(). Instead we resend START on an interval and watch for
+// the firmware to begin streaming (its frame sync byte coming back), stopping
+// as soon as it does, capped by kStartHandshakeTimeout. The firmware ignores
+// extra copies once it has started.
 // Must match START_COMMAND_BYTE in Arduino/radar_firmware/radar_firmware.ino.
 namespace {
 constexpr std::uint8_t kStartCommandByte = 0x53; // 'S'
-constexpr int kStartCommandRepeats = 8;
-constexpr std::chrono::milliseconds kStartCommandInterval{300};
+constexpr std::chrono::milliseconds kStartCommandInterval{250};
+constexpr std::chrono::seconds kStartHandshakeTimeout{6};
 
 // On disconnect the firmware breaks out of its sweep loop, returns all heads to
 // minAngle, and re-enters waitForStartCommand() — ready for the next connect.
@@ -94,11 +99,25 @@ SerialByteSource::SerialByteSource(std::string port_name, int baud_rate)
     throw std::runtime_error("SetCommTimeouts failed for: " + port_name_);
   }
 
-  // Tell the firmware to leave its idle state and start sweeping.
-  for (int i = 0; i < kStartCommandRepeats; ++i) {
+  // Tell the firmware to leave its idle state and start sweeping. Resend until
+  // it begins streaming (we see its frame sync byte) so we ride out the Uno's
+  // variable post-reset bootloader delay instead of firing a fixed burst that
+  // may all land before the sketch is listening.
+  const auto deadline = std::chrono::steady_clock::now() + kStartHandshakeTimeout;
+  bool streaming = false;
+  while (!streaming && std::chrono::steady_clock::now() < deadline) {
     DWORD written = 0;
     WriteFile(impl_->handle, &kStartCommandByte, 1, &written, nullptr);
-    std::this_thread::sleep_for(kStartCommandInterval);
+    const auto poll_deadline = std::chrono::steady_clock::now() + kStartCommandInterval;
+    while (std::chrono::steady_clock::now() < poll_deadline) {
+      std::uint8_t byte = 0;
+      DWORD got = 0;
+      if (ReadFile(impl_->handle, &byte, 1, &got, nullptr) && got == 1 &&
+          byte == kSyncByte1) {
+        streaming = true; // firmware is alive and sending frames
+        break;
+      }
+    }
   }
 }
 
@@ -191,13 +210,25 @@ SerialByteSource::SerialByteSource(std::string port_name, int baud_rate)
     throw std::runtime_error("tcsetattr failed: " + std::string(std::strerror(errno)));
   }
 
-  // Tell the firmware to leave its idle state and start sweeping.
-  for (int i = 0; i < kStartCommandRepeats; ++i) {
+  // Tell the firmware to leave its idle state and start sweeping. Resend until
+  // it begins streaming (we see its frame sync byte) so we ride out the Uno's
+  // variable post-reset bootloader delay instead of firing a fixed burst that
+  // may all land before the sketch is listening.
+  const auto deadline = std::chrono::steady_clock::now() + kStartHandshakeTimeout;
+  bool streaming = false;
+  while (!streaming && std::chrono::steady_clock::now() < deadline) {
     if (write(impl_->fd, &kStartCommandByte, 1) < 0 && errno != EINTR) {
       throw std::runtime_error("serial start-command write failed: " +
                                std::string(std::strerror(errno)));
     }
-    std::this_thread::sleep_for(kStartCommandInterval);
+    const auto poll_deadline = std::chrono::steady_clock::now() + kStartCommandInterval;
+    while (std::chrono::steady_clock::now() < poll_deadline) {
+      std::uint8_t byte = 0;
+      if (read(impl_->fd, &byte, 1) == 1 && byte == kSyncByte1) {
+        streaming = true; // firmware is alive and sending frames
+        break;
+      }
+    }
   }
 }
 

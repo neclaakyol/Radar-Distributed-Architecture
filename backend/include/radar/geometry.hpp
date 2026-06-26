@@ -33,10 +33,12 @@ namespace radar {
 // one boundary arm of that wedge, kFlankBaselineMm (40 cm) out from the
 // origin, with local angle 0 aligned to that boundary edge -- so a flank
 // local-0 reading lands on the same world ray the main sensor's matching
-// boundary reading reaches (the overlap the corroborator checks). The
-// flanks each sweep 180 deg and have a 60 cm max range. Override any value
-// via the --left-offset-x-mm / --left-heading-deg / --main-max-range-mm /
-// etc. CLI flags in main.cpp.
+// boundary reading reaches (the overlap the corroborator checks). From that
+// boundary edge each flank sweeps 180 deg *inward*, across the main
+// sensor's workspace (angle_sign points the sweep into the scene, not out
+// of it), so all three sensors look at the same space. The flanks have a
+// 60 cm max range. Override any value via the --left-offset-x-mm /
+// --left-heading-deg / --main-max-range-mm / etc. CLI flags in main.cpp.
 struct SensorMount {
   std::uint8_t sensor_id = 0;
   double offset_x_mm = 0.0;
@@ -62,15 +64,18 @@ constexpr double kFlankMaxRangeMm = 600.0; // 60 cm
 // Main HY-SRF05: origin, 120 deg sweep, 80 cm range.
 inline const SensorMount kDefaultMainMount{0, 0.0, 0.0, kMainHeadingOffsetDeg, 1.0,
                                            kMainMaxRangeMm, 0.0, 120.0};
-// Left flank: mounted on the main wedge's local-120 boundary arm (world 150
-// deg), kFlankBaselineMm out. offset = baseline * (cos150, sin150). Sweeps
-// 180 deg with local-0 aligned to that boundary edge.
-inline const SensorMount kDefaultLeftMount{1, -346.4101615, 200.0, 150.0, 1.0,
+// Left flank: positioned on the main wedge's local-120 boundary arm (world
+// 150 deg), kFlankBaselineMm out. offset = baseline * (cos150, sin150). In
+// real life it is aimed at the main sensor, so its local-0 boresight points
+// at the origin (world -30 deg); angle_sign = +1 sweeps the 180 deg arc from
+// there (world -30 -> 150) up across the main sensor's workspace.
+inline const SensorMount kDefaultLeftMount{1, -346.4101615, 200.0, -30.0, 1.0,
                                            kFlankMaxRangeMm, 0.0, 180.0};
 // Right flank: mounted on the main wedge's local-0 boundary arm (world 30
-// deg), mirrored sweep direction (angle_sign = -1) so local-0 also sits on
-// the boundary edge. offset = baseline * (cos30, sin30). Sweeps 180 deg.
-inline const SensorMount kDefaultRightMount{2, 346.4101615, 200.0, 30.0, -1.0,
+// deg), mirrored. offset = baseline * (cos30, sin30). local-0 sits on that
+// boundary edge; angle_sign = +1 sweeps the 180 deg arc inward (world
+// 30 -> 210), across the main sensor's workspace.
+inline const SensorMount kDefaultRightMount{2, 346.4101615, 200.0, 30.0, 1.0,
                                             kFlankMaxRangeMm, 0.0, 180.0};
 
 struct SensorGeometry {

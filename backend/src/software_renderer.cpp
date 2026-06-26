@@ -4,16 +4,22 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <sstream>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace radar {
 namespace {
 
 constexpr double kPi = 3.141592653589793238462643383279502884;
+
+// How long a detection lingers on the map before fading to nothing. Tuned to
+// roughly one sweep so the live arc leaves a fading trail behind it.
+constexpr double kFadeWindowMs = 3000.0;
 
 struct Color {
   std::uint8_t r = 0;
@@ -39,6 +45,7 @@ constexpr Color kDotConfirmed{255, 255, 255, 255}; // confirmed-detection ring
 constexpr Color kArrow{170, 240, 120, 255};        // MTI motion arrow
 constexpr Color kLabel{150, 158, 165, 255};
 constexpr Color kHud{120, 150, 130, 255};
+constexpr Color kDistanceLabel{230, 222, 140, 255}; // per-object distance-to-main (cm)
 
 // Per-sensor detection colors, indexed by sensor_id
 // (0 = main HY-SRF05, 1 = left flank, 2 = right flank).
@@ -336,27 +343,74 @@ RgbaFrame SoftwareRenderer::render(const RenderState &state) const {
     draw_line_thick(frame, origin, tip, kRay);
   }
 
-  // --- History points (dim, prior sweeps) ---
-  for (const RadarPoint &point : state.history_points) {
-    if (point.distance_mm == 0 || point.sensor_id >= kNumSensors) {
-      continue;
-    }
-    const WorldPoint w = to_world(point, geometry);
-    const Point2 p = vp.to_screen(w.world_x_mm, w.world_y_mm);
-    draw_filled_circle(frame, p, 1, dim(kSensorColor[point.sensor_id], 0.45));
-  }
+  // --- Detections, with a time-based fade trail (newest bright, older fade
+  //     out to nothing) and a per-object distance-to-main readout. ---
+  const auto now = RadarClock::now();
+  auto fade_for = [&](RadarClock::time_point ts) {
+    const double age_ms = std::chrono::duration<double, std::milli>(now - ts).count();
+    return std::clamp(1.0 - age_ms / kFadeWindowMs, 0.0, 1.0);
+  };
 
-  // --- Current detections (bright); confirmed get a white ring ---
-  for (const RadarPoint &point : state.current_points) {
+  // Draws one detection at its world position; brightness falls off purely
+  // with age, so a blip is brightest when freshly seen and fades to nothing.
+  // Returns the fade factor (or -1 if the point was skipped).
+  auto draw_detection = [&](const RadarPoint &point) -> double {
     if (point.distance_mm == 0 || point.sensor_id >= kNumSensors) {
-      continue;
+      return -1.0;
+    }
+    const double f = fade_for(point.timestamp);
+    if (f <= 0.02) {
+      return -1.0;
     }
     const WorldPoint w = to_world(point, geometry);
     const Point2 p = vp.to_screen(w.world_x_mm, w.world_y_mm);
     if (point.confirmation == Confirmation::Confirmed) {
-      draw_ring(frame, p, 5, kDotConfirmed);
+      draw_ring(frame, p, 5, dim(kDotConfirmed, f));
     }
-    draw_filled_circle(frame, p, 3, kSensorColor[point.sensor_id]);
+    draw_filled_circle(frame, p, f > 0.5 ? 3 : 2, dim(kSensorColor[point.sensor_id], f));
+    return f;
+  };
+
+  for (const RadarPoint &point : state.history_points) {
+    draw_detection(point);
+  }
+
+  // Live sweep also feeds the distance-to-main readout: each still-bright
+  // object gets a distance label (cm). Labels are decimated by screen distance
+  // so a cluster reads as a single number; the closest shows in the HUD too.
+  std::vector<Point2> labeled;
+  double nearest_to_main_mm = -1.0;
+  auto labeled_near = [&](Point2 p) {
+    for (const Point2 &q : labeled) {
+      const int dx = p.x - q.x;
+      const int dy = p.y - q.y;
+      if (dx * dx + dy * dy < 34 * 34) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  for (const RadarPoint &point : state.current_points) {
+    const double f = draw_detection(point);
+    if (f < 0.0) {
+      continue;
+    }
+    // Main sensor is the world origin, so distance-to-main is the world radius.
+    const WorldPoint w = to_world(point, geometry);
+    const double dist_to_main_mm = std::hypot(w.world_x_mm, w.world_y_mm);
+    if (nearest_to_main_mm < 0.0 || dist_to_main_mm < nearest_to_main_mm) {
+      nearest_to_main_mm = dist_to_main_mm;
+    }
+    if (f < 0.4) { // too faded to label clearly
+      continue;
+    }
+    const Point2 p = vp.to_screen(w.world_x_mm, w.world_y_mm);
+    if (!labeled_near(p)) {
+      labeled.push_back(p);
+      draw_text(frame, p.x + 6, p.y - 3,
+                std::to_string(std::lround(dist_to_main_mm / 10.0)), kDistanceLabel, 1);
+    }
   }
 
   // --- MTI motion arrows (object movement between sweeps) ---
@@ -392,6 +446,11 @@ RgbaFrame SoftwareRenderer::render(const RenderState &state) const {
         << " CYCLE:" << state.stats.completed_cycles;
   draw_text(frame, 12, 12, line1.str(), kHud, 1);
   draw_text(frame, 12, 24, line2.str(), kHud, 1);
+  if (nearest_to_main_mm >= 0.0) {
+    std::ostringstream line3;
+    line3 << "NEAREST TO MAIN: " << std::lround(nearest_to_main_mm / 10.0) << " CM";
+    draw_text(frame, 12, 36, line3.str(), kDistanceLabel, 1);
+  }
   draw_text(frame, 12, height_ - 16, "PLANE 80X140 CM  GRID 10 CM", kLabel, 1);
 
   return frame;

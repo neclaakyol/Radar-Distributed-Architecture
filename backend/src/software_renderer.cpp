@@ -6,8 +6,6 @@
 #include <cctype>
 #include <cmath>
 #include <cstdint>
-#include <cstdlib>
-#include <iomanip>
 #include <sstream>
 #include <string>
 
@@ -28,27 +26,47 @@ struct Point2 {
   int y = 0;
 };
 
-Color phosphor(std::uint8_t intensity) {
-  return Color{static_cast<std::uint8_t>(intensity / 4U), intensity,
-               static_cast<std::uint8_t>(intensity / 3U), 255};
-}
+// --- Palette (dark radar background; everything else pops on top) ---
+constexpr Color kBackground{4, 6, 10, 255};
+constexpr Color kBorder{150, 152, 165, 255};   // coverage shield outline
+constexpr Color kSensor{235, 60, 60, 255};      // sensor markers (red)
+constexpr Color kSensorRing{255, 120, 120, 255};
+constexpr Color kRay{236, 238, 248, 255};       // scan ray (white)
+constexpr Color kDot{60, 230, 95, 255};         // detected object (green)
+constexpr Color kDotConfirmed{255, 255, 255, 255};
+constexpr Color kArrow{170, 240, 120, 255};     // MTI motion arrow
+constexpr Color kLabel{150, 158, 165, 255};
+constexpr Color kHud{120, 150, 130, 255};
 
-Color sensor_tint(std::uint8_t sensor_id) {
-  switch (sensor_id) {
-  case 0:
-    return Color{40, 255, 90, 255}; // main: green
-  case 1:
-    return Color{255, 190, 40, 255}; // left flank: amber
-  case 2:
-    return Color{60, 200, 255, 255}; // right flank: cyan
-  default:
-    return Color{255, 255, 255, 255};
-  }
-}
+// On-screen placement + 120 deg fan for one sensor, matching the user's
+// sketch: HY-SRF05 bottom-center sweeping up, two HC-SR04s on the left/right
+// sweeping inward. Screen angle convention: degrees CCW from +x, with +deg
+// pointing up (screen y grows downward, handled in dir_of()).
+//   screen_deg(local) = base_deg + sign * local_angle   (local in [0,120])
+struct SensorView {
+  Point2 anchor;
+  double base_deg;
+  double sign;
+  const char *label;
+};
 
-Color dim(Color color) {
-  return Color{static_cast<std::uint8_t>(color.r / 3U), static_cast<std::uint8_t>(color.g / 3U),
-              static_cast<std::uint8_t>(color.b / 3U), color.a};
+constexpr int kRayLength = 340; // screen px for a full-range (max_range) reading
+
+// Indexed by sensor_id (0,1 = HC-SR04 flanks, 2 = HY-SRF05 base).
+const std::array<SensorView, kNumSensors> kLayout{{
+    {{110, 250}, -54.0, 1.0, "HC-SR04"},   // sensor 0: left, fan opens right
+    {{690, 250}, 114.0, 1.0, "HC-SR04"},   // sensor 1: right, fan opens left
+    {{400, 440}, 30.0, 1.0, "HY-SRF05"},   // sensor 2: bottom, fan opens up
+}};
+
+// Coverage-shield corners above the flank sensors (border drawing only).
+constexpr Point2 kCornerLeft{150, 70};
+constexpr Point2 kCornerRight{650, 70};
+constexpr Point2 kArcControl{400, 10}; // pulls the top edge into an arc
+
+std::pair<double, double> dir_of(double screen_deg) {
+  const double rad = screen_deg * kPi / 180.0;
+  return {std::cos(rad), -std::sin(rad)};
 }
 
 void put_pixel(RgbaFrame &frame, int x, int y, Color color) {
@@ -56,10 +74,9 @@ void put_pixel(RgbaFrame &frame, int x, int y, Color color) {
       y >= static_cast<int>(frame.height)) {
     return;
   }
-
   const std::size_t offset =
-      (static_cast<std::size_t>(y) * frame.width + static_cast<std::size_t>(x)) *
-      4U;
+      (static_cast<std::size_t>(y) * frame.width + static_cast<std::size_t>(x)) * 4U;
+  // max-blend: bright marks win over the dark background and each other.
   frame.rgba[offset + 0] = std::max(frame.rgba[offset + 0], color.r);
   frame.rgba[offset + 1] = std::max(frame.rgba[offset + 1], color.g);
   frame.rgba[offset + 2] = std::max(frame.rgba[offset + 2], color.b);
@@ -72,7 +89,6 @@ void draw_line(RgbaFrame &frame, Point2 a, Point2 b, Color color) {
   int dy = -std::abs(b.y - a.y);
   int sy = a.y < b.y ? 1 : -1;
   int err = dx + dy;
-
   for (;;) {
     put_pixel(frame, a.x, a.y, color);
     if (a.x == b.x && a.y == b.y) {
@@ -90,8 +106,14 @@ void draw_line(RgbaFrame &frame, Point2 a, Point2 b, Color color) {
   }
 }
 
-void draw_filled_circle(RgbaFrame &frame, Point2 center, int radius,
-                        Color color) {
+// 2 px line so rays / the border read clearly against the dark field.
+void draw_line_thick(RgbaFrame &frame, Point2 a, Point2 b, Color color) {
+  draw_line(frame, a, b, color);
+  draw_line(frame, {a.x + 1, a.y}, {b.x + 1, b.y}, color);
+  draw_line(frame, {a.x, a.y + 1}, {b.x, b.y + 1}, color);
+}
+
+void draw_filled_circle(RgbaFrame &frame, Point2 center, int radius, Color color) {
   for (int y = -radius; y <= radius; ++y) {
     for (int x = -radius; x <= radius; ++x) {
       if (x * x + y * y <= radius * radius) {
@@ -101,13 +123,46 @@ void draw_filled_circle(RgbaFrame &frame, Point2 center, int radius,
   }
 }
 
-void draw_arc(RgbaFrame &frame, Point2 center, int radius, Color color) {
-  for (int angle = 0; angle <= 180; ++angle) {
-    const double radians = static_cast<double>(angle) * kPi / 180.0;
-    const int x = center.x + static_cast<int>(std::round(std::cos(radians) * radius));
-    const int y = center.y - static_cast<int>(std::round(std::sin(radians) * radius));
-    put_pixel(frame, x, y, color);
+void draw_ring(RgbaFrame &frame, Point2 center, int radius, Color color) {
+  const int outer = radius * radius;
+  const int inner = (radius - 1) * (radius - 1);
+  for (int y = -radius; y <= radius; ++y) {
+    for (int x = -radius; x <= radius; ++x) {
+      const int d = x * x + y * y;
+      if (d <= outer && d >= inner) {
+        put_pixel(frame, center.x + x, center.y + y, color);
+      }
+    }
   }
+}
+
+// Quadratic Bezier, used for the rounded top edge of the coverage shield.
+void draw_bezier(RgbaFrame &frame, Point2 p0, Point2 ctrl, Point2 p1, Color color) {
+  Point2 prev = p0;
+  constexpr int steps = 48;
+  for (int i = 1; i <= steps; ++i) {
+    const double t = static_cast<double>(i) / steps;
+    const double u = 1.0 - t;
+    const double x = u * u * p0.x + 2 * u * t * ctrl.x + t * t * p1.x;
+    const double y = u * u * p0.y + 2 * u * t * ctrl.y + t * t * p1.y;
+    const Point2 cur{static_cast<int>(std::round(x)), static_cast<int>(std::round(y))};
+    draw_line(frame, prev, cur, color);
+    prev = cur;
+  }
+}
+
+void draw_arrow(RgbaFrame &frame, Point2 from, Point2 to, Color color) {
+  draw_line(frame, from, to, color);
+  const double angle = std::atan2(static_cast<double>(to.y - from.y),
+                                  static_cast<double>(to.x - from.x));
+  constexpr double wing = 0.55;
+  constexpr int length = 8;
+  Point2 left{to.x - static_cast<int>(std::round(std::cos(angle - wing) * length)),
+              to.y - static_cast<int>(std::round(std::sin(angle - wing) * length))};
+  Point2 right{to.x - static_cast<int>(std::round(std::cos(angle + wing) * length)),
+               to.y - static_cast<int>(std::round(std::sin(angle + wing) * length))};
+  draw_line(frame, to, left, color);
+  draw_line(frame, to, right, color);
 }
 
 std::array<std::uint8_t, 7> glyph(char c) {
@@ -157,12 +212,14 @@ std::array<std::uint8_t, 7> glyph(char c) {
   }
 }
 
-void draw_text(RgbaFrame &frame, int x, int y, std::string text, Color color,
-               int scale = 1) {
+int text_width(const std::string &text, int scale) {
+  return static_cast<int>(text.size()) * 6 * scale;
+}
+
+void draw_text(RgbaFrame &frame, int x, int y, std::string text, Color color, int scale = 1) {
   std::transform(text.begin(), text.end(), text.begin(), [](unsigned char ch) {
     return static_cast<char>(std::toupper(ch));
   });
-
   int cursor_x = x;
   for (char c : text) {
     const auto rows = glyph(c);
@@ -173,8 +230,7 @@ void draw_text(RgbaFrame &frame, int x, int y, std::string text, Color color,
         }
         for (int sy = 0; sy < scale; ++sy) {
           for (int sx = 0; sx < scale; ++sx) {
-            put_pixel(frame, cursor_x + col * scale + sx,
-                      y + row * scale + sy, color);
+            put_pixel(frame, cursor_x + col * scale + sx, y + row * scale + sy, color);
           }
         }
       }
@@ -193,53 +249,21 @@ double max_display_range(const RenderState &state) {
   scan(state.history_points);
   scan(state.current_points);
   for (const MotionVector &vector : state.vectors) {
-    max_distance =
-        std::max(max_distance, vector.current.source.distance_mm);
-    max_distance =
-        std::max(max_distance, vector.previous.source.distance_mm);
+    max_distance = std::max(max_distance, vector.current.source.distance_mm);
+    max_distance = std::max(max_distance, vector.previous.source.distance_mm);
   }
   return static_cast<double>(max_distance) * 1.1;
 }
 
-Point2 project(Point2 center, int radius, const RadarPoint &point,
-               double max_range_mm) {
-  const double range_fraction =
-      std::clamp(static_cast<double>(point.distance_mm) / max_range_mm, 0.0, 1.0);
-  const double radians = static_cast<double>(point.angle_deg) * kPi / 180.0;
-  const double screen_radius = range_fraction * static_cast<double>(radius);
-  return Point2{center.x + static_cast<int>(std::round(std::cos(radians) * screen_radius)),
-                center.y - static_cast<int>(std::round(std::sin(radians) * screen_radius))};
-}
-
-// Like project(), but interprets the point through its sensor's mount
-// (geometry.hpp) first, so points from all 3 physically distinct sensors
-// land at their correct position relative to one shared screen-fixed
-// center (the main sensor's world origin) instead of each being drawn as
-// if it were the main sensor.
-Point2 project_world(Point2 center, int radius, const RadarPoint &point,
-                     const SensorGeometry &geometry, double max_range_mm) {
-  const WorldPoint world = to_world(point, geometry);
-  const double range_from_origin_mm =
-      std::sqrt(world.world_x_mm * world.world_x_mm + world.world_y_mm * world.world_y_mm);
-  const double range_fraction = std::clamp(range_from_origin_mm / max_range_mm, 0.0, 1.0);
-  const double radians = world.world_angle_deg * kPi / 180.0;
-  const double screen_radius = range_fraction * static_cast<double>(radius);
-  return Point2{center.x + static_cast<int>(std::round(std::cos(radians) * screen_radius)),
-                center.y - static_cast<int>(std::round(std::sin(radians) * screen_radius))};
-}
-
-void draw_arrow(RgbaFrame &frame, Point2 from, Point2 to, Color color) {
-  draw_line(frame, from, to, color);
-  const double angle = std::atan2(static_cast<double>(to.y - from.y),
-                                 static_cast<double>(to.x - from.x));
-  constexpr double wing = 0.55;
-  constexpr int length = 8;
-  Point2 left{to.x - static_cast<int>(std::round(std::cos(angle - wing) * length)),
-              to.y - static_cast<int>(std::round(std::sin(angle - wing) * length))};
-  Point2 right{to.x - static_cast<int>(std::round(std::cos(angle + wing) * length)),
-               to.y - static_cast<int>(std::round(std::sin(angle + wing) * length))};
-  draw_line(frame, to, left, color);
-  draw_line(frame, to, right, color);
+// Projects a (sensor, local angle, distance) reading into screen space along
+// that sensor's on-screen fan.
+Point2 plot(const SensorView &view, double local_angle, std::uint16_t distance_mm,
+            double max_range) {
+  const double frac = std::clamp(static_cast<double>(distance_mm) / max_range, 0.0, 1.0);
+  const auto [dx, dy] = dir_of(view.base_deg + view.sign * local_angle);
+  const double len = frac * kRayLength;
+  return Point2{view.anchor.x + static_cast<int>(std::round(dx * len)),
+                view.anchor.y + static_cast<int>(std::round(dy * len))};
 }
 
 } // namespace
@@ -252,96 +276,78 @@ RgbaFrame SoftwareRenderer::render(const RenderState &state) const {
   frame.width = width_;
   frame.height = height_;
   frame.rgba.assign(static_cast<std::size_t>(width_) * height_ * 4U, 255);
-
-  for (std::uint32_t y = 0; y < height_; ++y) {
-    for (std::uint32_t x = 0; x < width_; ++x) {
-      const std::size_t offset =
-          (static_cast<std::size_t>(y) * width_ + x) * 4U;
-      frame.rgba[offset + 0] = 0;
-      frame.rgba[offset + 1] = static_cast<std::uint8_t>(6 + (y % 5));
-      frame.rgba[offset + 2] = 4;
-      frame.rgba[offset + 3] = 255;
-    }
+  for (std::size_t i = 0; i + 3 < frame.rgba.size(); i += 4) {
+    frame.rgba[i + 0] = kBackground.r;
+    frame.rgba[i + 1] = kBackground.g;
+    frame.rgba[i + 2] = kBackground.b;
+    frame.rgba[i + 3] = 255;
   }
 
-  const Point2 center{static_cast<int>(width_ / 2U),
-                      static_cast<int>(height_) - 28};
-  const int radius =
-      static_cast<int>(std::min(width_ / 2U - 24U, height_ - 72U));
   const double max_range = max_display_range(state);
 
-  for (int ring = 1; ring <= 4; ++ring) {
-    draw_arc(frame, center, radius * ring / 4, phosphor(45));
-  }
-  draw_line(frame, Point2{center.x - radius, center.y},
-            Point2{center.x + radius, center.y}, phosphor(40));
+  // --- Coverage border (shield through the 3 sensors + arched top) ---
+  draw_line_thick(frame, kCornerLeft, kLayout[0].anchor, kBorder);
+  draw_line_thick(frame, kLayout[0].anchor, kLayout[2].anchor, kBorder);
+  draw_line_thick(frame, kLayout[2].anchor, kLayout[1].anchor, kBorder);
+  draw_line_thick(frame, kLayout[1].anchor, kCornerRight, kBorder);
+  draw_bezier(frame, kCornerLeft, kArcControl, kCornerRight, kBorder);
 
-  for (int angle = 0; angle <= 180; angle += 30) {
-    const double radians = static_cast<double>(angle) * kPi / 180.0;
-    const Point2 end{
-        center.x + static_cast<int>(std::round(std::cos(radians) * radius)),
-        center.y - static_cast<int>(std::round(std::sin(radians) * radius))};
-    draw_line(frame, center, end, phosphor(38));
-  }
-
-  for (const RadarPoint &point : state.history_points) {
-    if (point.distance_mm == 0) {
-      continue;
-    }
-    const Point2 p = project_world(center, radius, point, state.geometry, max_range);
-    draw_filled_circle(frame, p, 2, dim(sensor_tint(point.sensor_id)));
+  // --- Per-sensor live scan ray (white), at each sensor's current angle ---
+  for (std::size_t sid = 0; sid < kLayout.size(); ++sid) {
+    const SensorView &view = kLayout[sid];
+    const auto [dx, dy] = dir_of(view.base_deg + view.sign * state.sweep_angle_by_sensor[sid]);
+    const Point2 tip{view.anchor.x + static_cast<int>(std::round(dx * kRayLength)),
+                     view.anchor.y + static_cast<int>(std::round(dy * kRayLength))};
+    draw_line_thick(frame, view.anchor, tip, kRay);
   }
 
+  // --- Detected objects (green dots); confirmed get a white ring ---
   for (const RadarPoint &point : state.current_points) {
-    if (point.distance_mm == 0) {
+    if (point.distance_mm == 0 || point.sensor_id >= kLayout.size()) {
       continue;
     }
-    const Point2 p = project_world(center, radius, point, state.geometry, max_range);
+    const Point2 p = plot(kLayout[point.sensor_id], point.angle_deg, point.distance_mm, max_range);
     if (point.confirmation == Confirmation::Confirmed) {
-      draw_filled_circle(frame, p, 5, Color{255, 255, 255, 255});
+      draw_ring(frame, p, 5, kDotConfirmed);
     }
-    draw_filled_circle(frame, p, 3, sensor_tint(point.sensor_id));
-    draw_filled_circle(frame, p, 1, phosphor(255));
+    draw_filled_circle(frame, p, 3, kDot);
   }
 
+  // --- MTI motion arrows (object movement between sweeps) ---
   for (const MotionVector &vector : state.vectors) {
-    const Point2 from =
-        project_world(center, radius, vector.previous.source, state.geometry, max_range);
-    const Point2 to =
-        project_world(center, radius, vector.current.source, state.geometry, max_range);
-    draw_arrow(frame, from, to, sensor_tint(vector.current.source.sensor_id));
+    const std::uint8_t sid = vector.current.source.sensor_id;
+    if (sid >= kLayout.size()) {
+      continue;
+    }
+    const Point2 from = plot(kLayout[sid], vector.previous.source.angle_deg,
+                             vector.previous.source.distance_mm, max_range);
+    const Point2 to = plot(kLayout[sid], vector.current.source.angle_deg,
+                           vector.current.source.distance_mm, max_range);
+    draw_arrow(frame, from, to, kArrow);
   }
 
-  for (std::size_t sensor_id = 0; sensor_id < state.sweep_angle_by_sensor.size(); ++sensor_id) {
-    RadarPoint sweep_point;
-    sweep_point.angle_deg = state.sweep_angle_by_sensor[sensor_id];
-    sweep_point.distance_mm = static_cast<std::uint16_t>(max_range);
-    sweep_point.sensor_id = static_cast<std::uint8_t>(sensor_id);
-    draw_line(frame, center,
-             project_world(center, radius, sweep_point, state.geometry, max_range),
-             dim(sensor_tint(sweep_point.sensor_id)));
+  // --- Sensor markers (red) on top, with labels ---
+  for (const SensorView &view : kLayout) {
+    draw_filled_circle(frame, view.anchor, 5, kSensor);
+    draw_ring(frame, view.anchor, 8, kSensorRing);
+    const std::string name = view.label;
+    draw_text(frame, view.anchor.x - text_width(name, 1) / 2, view.anchor.y + 14, name, kLabel, 1);
+    draw_text(frame, view.anchor.x - text_width("120 DEG", 1) / 2, view.anchor.y + 26,
+              "120 DEG", kLabel, 1);
   }
 
+  // --- Compact HUD ---
   std::ostringstream line1;
-  line1 << "SRC:" << state.source_name;
-  std::ostringstream line2;
-  line2 << "FRM:" << state.stats.protocol.valid_frames
+  line1 << "FRM:" << state.stats.protocol.valid_frames
         << " CRC:" << state.stats.protocol.crc_drops
         << " SYNC:" << state.stats.protocol.sync_drops;
-  std::ostringstream line3;
-  line3 << "TIMEOUT:" << state.stats.protocol.timeout_readings
-        << " SWEEP:" << state.stats.completed_sweeps
-        << " CYCLE:" << state.stats.completed_cycles;
-  std::ostringstream line4;
-  line4 << "VEC:" << state.stats.vector_count
-        << " ANG0:" << static_cast<int>(state.sweep_angle_by_sensor[0])
+  std::ostringstream line2;
+  line2 << "ANG0:" << static_cast<int>(state.sweep_angle_by_sensor[0])
         << " ANG1:" << static_cast<int>(state.sweep_angle_by_sensor[1])
-        << " ANG2:" << static_cast<int>(state.sweep_angle_by_sensor[2]);
-
-  draw_text(frame, 12, 12, line1.str(), phosphor(135), 1);
-  draw_text(frame, 12, 24, line2.str(), phosphor(135), 1);
-  draw_text(frame, 12, 36, line3.str(), phosphor(135), 1);
-  draw_text(frame, 12, 48, line4.str(), phosphor(135), 1);
+        << " ANG2:" << static_cast<int>(state.sweep_angle_by_sensor[2])
+        << " CYCLE:" << state.stats.completed_cycles;
+  draw_text(frame, 12, 12, line1.str(), kHud, 1);
+  draw_text(frame, 12, 24, line2.str(), kHud, 1);
 
   return frame;
 }

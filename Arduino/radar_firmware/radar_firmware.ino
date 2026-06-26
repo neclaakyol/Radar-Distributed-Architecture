@@ -20,7 +20,12 @@
 #include <Servo.h>
 
 // --- System Definitions ---
-#define BAUD_RATE 115200
+// 38400 (not 115200): the Uno's UART is ~2% off at 115200, which the Jetson
+// Tegra UART + level-shifter margin pushes past framing tolerance (garbled
+// bytes / 0x00 framing errors). At 38400 the Uno error is ~0.16% and the link
+// is reliable; data rate need is well under 200 B/s. Run the backend with
+// --baud 38400 to match.
+#define BAUD_RATE 38400
 #define SYNC_BYTE_1 0xAA
 #define SYNC_BYTE_2 0x55
 #define HCSR04_TIMEOUT_US 30000UL

@@ -1,6 +1,10 @@
 # Radar Backend
 
-Portable C++20 backend for the HC-SR04/SG90 distributed radar system.
+Portable C++20 backend for the distributed 3-sensor ultrasonic radar system.
+
+For an end-to-end explanation of the system — firmware, wire protocol, backend
+pipeline, and the live Vulkan/PBM rendering — see
+[`docs/architecture.md`](../docs/architecture.md).
 
 ## Dependencies
 
@@ -112,9 +116,23 @@ Options:
 - `--threshold 128`: luminance threshold for 1-bit PBM conversion.
 - `--no-render`: skip framebuffer generation and PBM export.
 
-The portable core does not require Vulkan. When Vulkan dependencies are present,
-the optional renderer initializes a Vulkan-capable GLFW window while keeping the
-software framebuffer readback path available for deterministic PBM export. The
-checked-in `shaders/mti.comp` is the compute-shader contract for GPU candidate
-generation; the current executable resolves MTI through the CPU reference path so
-replay and tests remain deterministic on machines without a Vulkan toolchain.
+### Live Vulkan window
+
+The portable core does not require Vulkan. When the Vulkan dependencies are
+present and a display is attached, the optional renderer creates a Vulkan
+swapchain and **presents the radar PPI live** to a "Radar PPI" window, refreshing
+every loop tick (~16 ms) as frames arrive; closing the window stops the app.
+Build with `-DRADAR_ENABLE_VULKAN=ON` and run without `--no-render`:
+
+```sh
+backend/build/radar_app --serial /dev/ttyTHS1 --baud 115200
+```
+
+The software framebuffer path still produces the per-cycle PBM files and is used
+automatically whenever Vulkan or a display is unavailable (headless) — no flag
+change needed.
+
+The checked-in `shaders/mti.comp` is the compute-shader contract for GPU
+candidate generation; the current executable resolves MTI through the CPU
+reference path so replay and tests remain deterministic on machines without a
+Vulkan toolchain.

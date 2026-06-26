@@ -25,7 +25,17 @@ sudo apt-get install -y \
 # ─── GCC 10  (Ubuntu 18 ships GCC 7; C++20 requires GCC 10+) ────────────────
 echo ""
 echo "--- GCC 10 (C++20 support) ---"
-sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+# Add the ubuntu-toolchain-r/test PPA manually instead of via
+# `add-apt-repository`. That tool fetches the PPA's signing key over the hkp
+# keyserver protocol (port 11371), which is commonly firewalled on Jetson
+# networks and times out ("retrieving gpg key timed out"). Fetching the exact
+# same key over HTTPS (port 443) is reliable.
+TOOLCHAIN_KEY=60C317803A41BA51845E371A1E9377A2BA9EF27F
+wget -qO- "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x${TOOLCHAIN_KEY}" \
+    | sudo gpg --dearmor -o /usr/share/keyrings/ubuntu-toolchain-r-keyring.gpg
+echo "deb [signed-by=/usr/share/keyrings/ubuntu-toolchain-r-keyring.gpg] \
+https://ppa.launchpadcontent.net/ubuntu-toolchain-r/test/ubuntu ${CODENAME} main" \
+    | sudo tee /etc/apt/sources.list.d/ubuntu-toolchain-r.list > /dev/null
 sudo apt-get update -qq
 sudo apt-get install -y gcc-10 g++-10
 

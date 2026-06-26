@@ -28,10 +28,6 @@ struct CorroborationConfig {
 
   double match_distance_tolerance_mm = 100.0;
   std::chrono::milliseconds match_time_window{500};
-
-  // Sanity bound, independent of corroboration: readings beyond a sensor's
-  // realistic max range are dropped before any band/matching logic runs.
-  double max_valid_distance_mm = 4500.0;
 };
 
 // Tracks each sensor's most recently seen world-frame points so that

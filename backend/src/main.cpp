@@ -68,15 +68,18 @@ void print_usage(const char *argv0) {
             << "  --log-dir PATH   PBM output directory, default logs\n"
             << "  --threshold N    PBM luminance threshold, default 128\n"
             << "  --no-render      Disable framebuffer/PBM generation\n\n"
-            << "Sensor mount geometry (placeholders -- see geometry.hpp):\n"
+            << "Sensor mount geometry (defaults -- see geometry.hpp):\n"
             << "  --left-offset-x-mm N, --left-offset-y-mm N, --left-heading-deg N\n"
             << "  --right-offset-x-mm N, --right-offset-y-mm N, --right-heading-deg N\n\n"
+            << "Per-sensor max range (readings beyond are not shown on the map):\n"
+            << "  --main-max-range-mm N   default 800 (80 cm)\n"
+            << "  --left-max-range-mm N   default 600 (60 cm)\n"
+            << "  --right-max-range-mm N  default 600 (60 cm)\n\n"
             << "Cross-sensor corroboration tuning:\n"
             << "  --corroboration-band-main-deg N   default 15\n"
             << "  --corroboration-band-flank-deg N  default 30\n"
             << "  --corroboration-tolerance-mm N    default 100\n"
-            << "  --corroboration-window-ms N       default 500\n"
-            << "  --max-range-mm N                  sanity bound, default 4500\n";
+            << "  --corroboration-window-ms N       default 500\n";
 }
 
 Config parse_args(int argc, char **argv) {
@@ -132,8 +135,12 @@ Config parse_args(int argc, char **argv) {
     } else if (arg == "--corroboration-window-ms") {
       config.corroboration.match_time_window =
           std::chrono::milliseconds(std::stoi(need_value("--corroboration-window-ms")));
-    } else if (arg == "--max-range-mm") {
-      config.corroboration.max_valid_distance_mm = std::stod(need_value("--max-range-mm"));
+    } else if (arg == "--main-max-range-mm") {
+      config.geometry.mounts[0].max_range_mm = std::stod(need_value("--main-max-range-mm"));
+    } else if (arg == "--left-max-range-mm") {
+      config.geometry.mounts[1].max_range_mm = std::stod(need_value("--left-max-range-mm"));
+    } else if (arg == "--right-max-range-mm") {
+      config.geometry.mounts[2].max_range_mm = std::stod(need_value("--right-max-range-mm"));
     } else if (arg == "--help" || arg == "-h") {
       print_usage(argv[0]);
       std::exit(0);
@@ -345,6 +352,13 @@ int main(int argc, char **argv) {
           continue;
         }
 
+        // Per-sensor max range: a reading beyond this sensor's range is not
+        // shown on the map (and never enters its sweep or corroboration).
+        if (static_cast<double>(telemetry.distance_mm) >
+            config.geometry.mount_for(telemetry.sensor_id).max_range_mm) {
+          continue;
+        }
+
         render_state.sweep_angle_by_sensor[telemetry.sensor_id] = telemetry.angle_deg;
 
         radar::RadarPoint built_point;
@@ -399,12 +413,27 @@ int main(int argc, char **argv) {
                   << render_state.vectors.size() << " MTI vectors, "
                   << protocol_counters.valid_frames << " valid frames\n";
 
+        // Metric 2 (MTI displacement accuracy): emit the magnitude, speed, and
+        // heading of every matched motion vector so a known physical target
+        // displacement can be compared against the computed value.
+        for (const radar::MotionVector &vector : render_state.vectors) {
+          std::cout << "  vector: disp=" << vector.displacement_mm << " mm, speed="
+                    << vector.speed_mm_s << " mm/s, heading=" << vector.heading_deg
+                    << " deg\n";
+        }
+
         if (!config.no_render) {
+          // Metric 3 (PBM logging latency): time framebuffer capture through
+          // file write so the per-cycle logging overhead can be measured.
+          const auto log_start = std::chrono::steady_clock::now();
           const radar::RgbaFrame frame = software_renderer.render(render_state);
           const std::filesystem::path output =
               pbm_path(config.log_dir, completed_cycles);
           radar::write_pbm(output, frame, config.threshold);
-          std::cout << "Wrote " << output.string() << "\n";
+          const auto log_end = std::chrono::steady_clock::now();
+          const double log_ms =
+              std::chrono::duration<double, std::milli>(log_end - log_start).count();
+          std::cout << "Wrote " << output.string() << " (" << log_ms << " ms)\n";
         }
       }
 

@@ -129,7 +129,7 @@ implementations.
 \section{Problem Definition}
 %Single-node embedded radar projects suffer from severe processing bottlenecks: driving a motor, waiting for echoes, and rendering graphics sequentially causes unacceptable latency, resulting in "blind spots" during scans. Furthermore, raw serial communication is highly susceptible to data corruption and lacks security. Our proposed solution solves the timing bottleneck through a distributed architecture (Microcontroller for hardware manipulation, Jetson Nano for GUI and processing). It solves the data integrity problem by implementing a custom payload packaging protocol (Encryption + CRC) over the serial link. Finally, it addresses the lack of analytical tracking in conventional projects by offloading the mathematical correlation of target vectors to the Edge device, allowing for advanced graphical rasterization and thermal printing without halting the sensor sweep.
 
-Mobile or field-deployable surveillance scenarios require a low-cost radar
+Mobile or field-deployable surveillance scenarios require a radar
 prototype that simultaneously satisfies three constraints: (1)~real-time
 target tracking without scan blind-spots, (2)~tamper-resistant data integrity
 over the sensor link, and (3)~a physical, persistent record of the radar map

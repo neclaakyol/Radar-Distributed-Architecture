@@ -9,11 +9,13 @@
 namespace radar {
 
 // Mounting description for one sensor, expressed in a shared world frame
-// whose origin and heading reference is the main sensor (sensor_id 0).
+// whose origin and heading reference is the main sensor (sensor_id 0, the
+// HY-SRF05).
 //
 // World angle convention matches mti.hpp's polar_to_cartesian(): degrees,
 // measured counter-clockwise from the world +X axis, with cartesian
-// (x_mm, y_mm) sharing that same origin.
+// (x_mm, y_mm) sharing that same origin. World +Y points "into" the scene
+// (the direction the main sensor looks); the main sensor sits at the origin.
 //
 //   world_angle_deg = angle_sign * local_angle_deg + heading_offset_deg
 //   x_mm = offset_x_mm + distance_mm * cos(world_angle_deg)
@@ -24,37 +26,52 @@ namespace radar {
 // center one way, right sweeps the other way) -- a pure additive offset
 // cannot express that on its own.
 //
-// PLACEHOLDER VALUES: nothing below is physically measured yet (no rig
-// exists to measure). These encode only the qualitative layout described
-// in plan.md: main sensor centered, local angle range [0,120], heading
-// offset 30 deg so its wedge is symmetric about world "up" (90 deg); each
-// flank sensor mounted at one boundary edge of that wedge, baseline
-// distance kPlaceholderBaselineMm away, with local angle 0 aligned to the
-// boundary edge (the "inward" overlap direction) and local angle
-// increasing sweeping outward, away from the main wedge. Override via the
-// --left-offset-x-mm / --left-heading-deg / etc. CLI flags in main.cpp
-// once the rig is physically built and measured -- see plan.md's deferred
-// EEPROM calibration step.
+// Physical layout (measured): the workspace is an 80 x 140 cm plane. The
+// main HY-SRF05 sits at the origin and sweeps a 120 deg arc (local [0,120],
+// heading offset 30 deg -> world wedge 30..150 deg, symmetric about world
+// "up" at 90 deg), with an 80 cm max range. Each flank sensor is mounted on
+// one boundary arm of that wedge, kFlankBaselineMm (40 cm) out from the
+// origin, with local angle 0 aligned to that boundary edge -- so a flank
+// local-0 reading lands on the same world ray the main sensor's matching
+// boundary reading reaches (the overlap the corroborator checks). The
+// flanks each sweep 180 deg and have a 60 cm max range. Override any value
+// via the --left-offset-x-mm / --left-heading-deg / --main-max-range-mm /
+// etc. CLI flags in main.cpp.
 struct SensorMount {
   std::uint8_t sensor_id = 0;
   double offset_x_mm = 0.0;
   double offset_y_mm = 0.0;
   double heading_offset_deg = 0.0;
   double angle_sign = 1.0;
+  double max_range_mm = 800.0;   // readings beyond this are dropped (not shown on map)
+  double sweep_min_deg = 0.0;    // local sweep extents (used to draw coverage on the map)
+  double sweep_max_deg = 120.0;
 };
 
-constexpr double kPlaceholderBaselineMm = 150.0;
-constexpr double kMainHeadingOffsetDeg = 30.0;
+// Workspace plane (top-down map extents). World x spans
+// [-kPlaneWidthMm/2, +kPlaneWidthMm/2] (140 cm wide); world y spans
+// [0, kPlaneDepthMm] (80 cm deep, the direction the main sensor looks).
+constexpr double kPlaneWidthMm = 1400.0;
+constexpr double kPlaneDepthMm = 800.0;
 
-// Left flank mount: world angle 150 deg (main's local-120 boundary edge),
-// baseline kPlaceholderBaselineMm from the main sensor.
-// offset_x_mm/offset_y_mm = baseline * (cos(150deg), sin(150deg))
-inline const SensorMount kDefaultMainMount{0, 0.0, 0.0, kMainHeadingOffsetDeg, 1.0};
-inline const SensorMount kDefaultLeftMount{1, -129.9038, 75.0, 150.0, 1.0};
-// Right flank mount: world angle 30 deg (main's local-0 boundary edge),
-// mirrored sweep direction (angle_sign = -1) so local angle 0 also sits at
-// the inward/boundary edge with local angle increasing sweeping outward.
-inline const SensorMount kDefaultRightMount{2, 129.9038, 75.0, 30.0, -1.0};
+constexpr double kFlankBaselineMm = 400.0; // 40 cm along the wedge boundary arms
+constexpr double kMainHeadingOffsetDeg = 30.0;
+constexpr double kMainMaxRangeMm = 800.0;  // 80 cm
+constexpr double kFlankMaxRangeMm = 600.0; // 60 cm
+
+// Main HY-SRF05: origin, 120 deg sweep, 80 cm range.
+inline const SensorMount kDefaultMainMount{0, 0.0, 0.0, kMainHeadingOffsetDeg, 1.0,
+                                           kMainMaxRangeMm, 0.0, 120.0};
+// Left flank: mounted on the main wedge's local-120 boundary arm (world 150
+// deg), kFlankBaselineMm out. offset = baseline * (cos150, sin150). Sweeps
+// 180 deg with local-0 aligned to that boundary edge.
+inline const SensorMount kDefaultLeftMount{1, -346.4101615, 200.0, 150.0, 1.0,
+                                           kFlankMaxRangeMm, 0.0, 180.0};
+// Right flank: mounted on the main wedge's local-0 boundary arm (world 30
+// deg), mirrored sweep direction (angle_sign = -1) so local-0 also sits on
+// the boundary edge. offset = baseline * (cos30, sin30). Sweeps 180 deg.
+inline const SensorMount kDefaultRightMount{2, 346.4101615, 200.0, 30.0, -1.0,
+                                            kFlankMaxRangeMm, 0.0, 180.0};
 
 struct SensorGeometry {
   std::array<SensorMount, kNumSensors> mounts{kDefaultMainMount, kDefaultLeftMount,

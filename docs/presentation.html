@@ -1,0 +1,2050 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>CENG424 — Distributed Radar Architecture</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Reveal.js CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/white.min.css">
+
+  <!-- Highlight.js for Code -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github-dark.min.css">
+
+  <!-- KaTeX -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/katex.min.css">
+
+  <style>
+    /* ===== CANVA-STYLE DESIGN SYSTEM ===== */
+    :root {
+      /* Deep space palette */
+      --bg-primary: #0c0f1a;
+      --bg-secondary: #141829;
+      --bg-card: rgba(22, 27, 48, 0.85);
+      --bg-card-hover: rgba(30, 38, 68, 0.95);
+      --bg-gradient-1: linear-gradient(135deg, #0c0f1a 0%, #1a1f3a 50%, #0c0f1a 100%);
+
+      /* Accent palette — electric cyan + warm gold */
+      --accent-primary: #00d4ff;
+      --accent-secondary: #7c3aed;
+      --accent-warm: #f59e0b;
+      --accent-rose: #f43f5e;
+      --accent-emerald: #10b981;
+      --accent-glow: rgba(0, 212, 255, 0.12);
+      --accent-glow-strong: rgba(0, 212, 255, 0.25);
+
+      /* Gradients */
+      --gradient-accent: linear-gradient(135deg, #00d4ff, #7c3aed);
+      --gradient-warm: linear-gradient(135deg, #f59e0b, #f43f5e);
+      --gradient-cool: linear-gradient(135deg, #00d4ff, #10b981);
+      --gradient-card: linear-gradient(145deg, rgba(22, 27, 48, 0.9), rgba(15, 18, 32, 0.95));
+
+      /* Text */
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+
+      /* Typography */
+      --font-display: 'Sora', sans-serif;
+      --font-body: 'DM Sans', sans-serif;
+      --font-heading: 'Space Grotesk', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+
+      /* Borders */
+      --border-subtle: rgba(255, 255, 255, 0.06);
+      --border-accent: rgba(0, 212, 255, 0.2);
+      --border-radius: 16px;
+      --border-radius-sm: 10px;
+      --border-radius-xs: 6px;
+    }
+
+    /* ===== GLOBAL ===== */
+    body {
+      background: var(--bg-primary) !important;
+      font-family: var(--font-body);
+      color: var(--text-primary);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .reveal {
+      font-family: var(--font-body);
+      color: var(--text-primary);
+      font-size: 18px;
+    }
+
+    .reveal .slides section {
+      background: transparent !important;
+    }
+
+    /* ===== TYPOGRAPHY ===== */
+    .reveal h1 {
+      font-family: var(--font-display);
+      font-weight: 800;
+      color: var(--text-primary);
+      letter-spacing: -0.04em;
+      line-height: 1.1;
+      text-transform: none;
+    }
+
+    .reveal h2 {
+      font-family: var(--font-heading);
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.03em;
+      font-size: 2.2rem;
+      margin-bottom: 28px;
+      text-transform: none;
+      position: relative;
+      padding-bottom: 16px;
+    }
+
+    .reveal h2::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 60px;
+      height: 3px;
+      background: var(--gradient-accent);
+      border-radius: 2px;
+    }
+
+    .reveal h3 {
+      font-family: var(--font-heading);
+      font-weight: 600;
+      color: var(--accent-primary);
+      font-size: 1.2rem;
+      letter-spacing: -0.02em;
+      text-transform: none;
+      margin-bottom: 10px;
+    }
+
+    .reveal p, .reveal li {
+      color: var(--text-secondary);
+      line-height: 1.65;
+      font-weight: 400;
+    }
+
+    .text-gradient {
+      background: var(--gradient-accent);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .text-gradient--warm {
+      background: var(--gradient-warm);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .text-gradient--cool {
+      background: var(--gradient-cool);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* ===== GLASS CARD ===== */
+    .card {
+      background: var(--gradient-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--border-radius);
+      padding: 28px;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.3), transparent);
+    }
+
+    .card:hover {
+      border-color: var(--border-accent);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 24px var(--accent-glow);
+    }
+
+    .card--accent-top {
+      border-top: 3px solid var(--accent-primary);
+    }
+
+    .card--warm-top {
+      border-top: 3px solid var(--accent-warm);
+    }
+
+    /* ===== LAYOUT GRIDS ===== */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+    .grid-2-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
+    .grid-1-2 { display: grid; grid-template-columns: 1fr 2fr; gap: 24px; }
+
+    /* ===== BADGES & CHIPS ===== */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 14px;
+      border-radius: 100px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      font-family: var(--font-mono);
+      letter-spacing: 0.03em;
+    }
+
+    .badge--cyan { background: rgba(0, 212, 255, 0.12); color: var(--accent-primary); border: 1px solid rgba(0, 212, 255, 0.2); }
+    .badge--purple { background: rgba(124, 58, 237, 0.12); color: #a78bfa; border: 1px solid rgba(124, 58, 237, 0.2); }
+    .badge--warm { background: rgba(245, 158, 11, 0.12); color: var(--accent-warm); border: 1px solid rgba(245, 158, 11, 0.2); }
+    .badge--rose { background: rgba(244, 63, 94, 0.12); color: var(--accent-rose); border: 1px solid rgba(244, 63, 94, 0.2); }
+    .badge--emerald { background: rgba(16, 185, 129, 0.12); color: var(--accent-emerald); border: 1px solid rgba(16, 185, 129, 0.2); }
+
+    /* ===== BULLET LIST ===== */
+    .feature-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .feature-list li {
+      position: relative;
+      padding-left: 22px;
+      margin-bottom: 12px;
+      font-size: 0.85rem;
+    }
+
+    .feature-list li::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 8px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--gradient-accent);
+    }
+
+    .feature-list .bold {
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+
+    /* ===== TEAM CARDS ===== */
+    .team-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 14px;
+    }
+
+    .team-card {
+      background: var(--gradient-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--border-radius-sm);
+      padding: 18px 14px;
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+
+    .team-card:hover {
+      border-color: var(--border-accent);
+      box-shadow: 0 0 20px var(--accent-glow);
+      transform: translateY(-3px);
+    }
+
+    .team-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--gradient-accent);
+      margin: 0 auto 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: var(--bg-primary);
+      font-family: var(--font-display);
+    }
+
+    .team-card h4 {
+      font-family: var(--font-heading);
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin: 6px 0 4px;
+    }
+
+    .team-card h5 {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      margin: 0 0 10px;
+      font-weight: 400;
+    }
+
+    .team-card ul {
+      font-size: 0.65rem;
+      text-align: left;
+      padding-left: 14px;
+      margin: 0;
+      color: var(--text-secondary);
+      list-style-type: none;
+    }
+
+    .team-card li {
+      margin-bottom: 5px;
+      line-height: 1.35;
+      position: relative;
+      padding-left: 10px;
+    }
+
+    .team-card li::before {
+      content: '›';
+      position: absolute;
+      left: 0;
+      color: var(--accent-primary);
+      font-weight: 700;
+    }
+
+    /* ===== IMAGE PLACEHOLDER ===== */
+    .img-placeholder {
+      background: var(--bg-secondary);
+      border: 2px dashed var(--border-accent);
+      border-radius: var(--border-radius);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 200px;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      font-family: var(--font-mono);
+      text-align: center;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .img-placeholder::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 10px,
+        rgba(0, 212, 255, 0.02) 10px,
+        rgba(0, 212, 255, 0.02) 20px
+      );
+    }
+
+    .img-placeholder:hover {
+      border-color: var(--accent-primary);
+      background: rgba(0, 212, 255, 0.03);
+    }
+
+    .img-placeholder .icon {
+      font-size: 2rem;
+      margin-bottom: 10px;
+      opacity: 0.5;
+    }
+
+    .img-placeholder .label {
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ===== CODE BLOCKS ===== */
+    .reveal pre {
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--border-radius-sm);
+      background: rgba(10, 12, 20, 0.9) !important;
+      width: 100%;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    }
+
+    .reveal pre code {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      line-height: 1.45;
+      background: transparent;
+      color: var(--text-primary);
+      max-height: 250px;
+      padding: 16px;
+    }
+
+    /* ===== GANTT CHART ===== */
+    .gantt-chart {
+      display: grid;
+      grid-template-columns: 1fr;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--border-radius-sm);
+      padding: 12px;
+      font-size: 0.64rem;
+      gap: 0;
+      margin-top: 10px;
+    }
+
+    .gantt-header-row {
+      display: grid;
+      grid-template-columns: 240px repeat(14, 1fr);
+      text-align: center;
+      font-weight: 600;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 0.58rem;
+      border-bottom: 2px solid var(--border-subtle);
+      padding-bottom: 6px;
+      margin-bottom: 4px;
+    }
+
+    .gantt-header-cell {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .gantt-header-cell.label-col {
+      align-items: flex-start;
+      padding-left: 12px;
+      font-family: var(--font-heading);
+      font-size: 0.65rem;
+      color: var(--text-primary);
+    }
+
+    .gantt-date {
+      font-size: 0.48rem;
+      font-weight: 400;
+      color: var(--text-muted);
+      opacity: 0.8;
+      margin-top: 1px;
+    }
+
+    .gantt-row {
+      display: grid;
+      grid-template-columns: 240px repeat(14, 1fr);
+      align-items: stretch;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      min-height: 32px;
+    }
+
+    .gantt-row-even {
+      background: rgba(255, 255, 255, 0.015);
+    }
+
+    .gantt-row > * {
+      grid-row: 1;
+    }
+
+    .gantt-label {
+      grid-column: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 4px 12px;
+      border-right: 1px solid var(--border-subtle);
+      text-align: left;
+    }
+
+    .gantt-task-title {
+      font-weight: 600;
+      color: var(--text-primary);
+      font-size: 0.65rem;
+      line-height: 1.25;
+    }
+
+    .gantt-task-assignees {
+      font-size: 0.54rem;
+      color: var(--text-muted);
+      margin-top: 1px;
+    }
+
+    .gantt-cell {
+      border-right: 1px solid rgba(255, 255, 255, 0.03);
+      height: 100%;
+    }
+
+    .gantt-cell:last-of-type {
+      border-right: none;
+    }
+
+    .gantt-bar {
+      border-radius: 3px;
+      margin: 6px 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.52rem;
+      font-weight: 600;
+      color: #ffffff;
+      padding: 2px 6px;
+      z-index: 2;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    }
+
+    .bar-finished {
+      background: rgba(16, 185, 129, 0.25);
+      border: 1px solid var(--accent-emerald);
+    }
+
+    .bar-onprogress {
+      background: rgba(0, 212, 255, 0.25);
+      border: 1px solid var(--accent-primary);
+    }
+
+    .bar-planned {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: var(--text-muted);
+    }
+
+    .gantt-milestone-container {
+      grid-row: 1;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      z-index: 3;
+      pointer-events: none;
+    }
+
+    .gantt-milestone-diamond {
+      width: 8px;
+      height: 8px;
+      background: var(--accent-warm);
+      border: 1px solid #ffffff;
+      transform: rotate(45deg);
+      margin-left: -4px;
+      box-shadow: 0 0 6px var(--accent-warm);
+    }
+
+    .gantt-milestone-diamond.planned {
+      background: rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      box-shadow: none;
+    }
+
+    .gantt-legend {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      margin-top: 12px;
+      font-size: 0.58rem;
+      color: var(--text-muted);
+    }
+
+    .gantt-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-box {
+      width: 12px;
+      height: 8px;
+      border-radius: 2px;
+      display: inline-block;
+    }
+
+    .legend-diamond {
+      width: 6px;
+      height: 6px;
+      background: var(--accent-warm);
+      border: 1px solid #ffffff;
+      transform: rotate(45deg);
+      display: inline-block;
+    }
+
+    /* ===== RADAR WIDGET ===== */
+    .radar-widget {
+      width: 260px;
+      height: 260px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #060a14 0%, #0a0e1c 100%);
+      border: 2px solid var(--accent-primary);
+      position: relative;
+      overflow: hidden;
+      margin: 0 auto;
+      box-shadow: 0 0 30px rgba(0, 212, 255, 0.15), inset 0 0 40px rgba(0, 212, 255, 0.05);
+    }
+
+    .radar-sweep {
+      width: 50%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent 0%, rgba(0, 212, 255, 0.8) 100%);
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform-origin: 0% 50%;
+      animation: radarSpin 4s linear infinite;
+      z-index: 2;
+    }
+
+    @keyframes radarSpin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .radar-ring {
+      position: absolute;
+      border: 1px solid rgba(0, 212, 255, 0.12);
+      border-radius: 50%;
+    }
+
+    .radar-ring--1 { width: 33%; height: 33%; top: 33.5%; left: 33.5%; }
+    .radar-ring--2 { width: 66%; height: 66%; top: 17%; left: 17%; }
+    .radar-ring--3 { width: 100%; height: 100%; top: 0; left: 0; }
+
+    .radar-crosshair-h {
+      width: 100%; height: 1px; background: rgba(0, 212, 255, 0.1);
+      position: absolute; top: 50%; z-index: 1;
+    }
+
+    .radar-crosshair-v {
+      width: 1px; height: 100%; background: rgba(0, 212, 255, 0.1);
+      position: absolute; left: 50%; z-index: 1;
+    }
+
+    .radar-blip {
+      width: 6px; height: 6px;
+      background: var(--accent-primary);
+      border-radius: 50%;
+      position: absolute;
+      box-shadow: 0 0 8px var(--accent-primary);
+      z-index: 3;
+      animation: blipPulse 2s ease-in-out infinite;
+    }
+
+    @keyframes blipPulse {
+      0%, 100% { opacity: 0.9; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(1.3); }
+    }
+
+    /* ===== STAT BOX ===== */
+    .stat-box {
+      text-align: center;
+      padding: 16px;
+    }
+
+    .stat-value {
+      font-family: var(--font-display);
+      font-size: 2rem;
+      font-weight: 800;
+      background: var(--gradient-accent);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1;
+    }
+
+    .stat-label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+      font-family: var(--font-mono);
+      letter-spacing: 0.04em;
+    }
+
+    /* ===== PROTOCOL FRAME VIZ ===== */
+    .frame-viz {
+      display: flex;
+      gap: 2px;
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      margin: 12px 0;
+    }
+
+    .frame-segment {
+      padding: 8px 6px;
+      border-radius: var(--border-radius-xs);
+      text-align: center;
+      flex: 1;
+      font-weight: 500;
+    }
+
+    .frame-sync { background: rgba(0, 212, 255, 0.15); color: var(--accent-primary); border: 1px solid rgba(0, 212, 255, 0.3); }
+    .frame-payload { background: rgba(124, 58, 237, 0.15); color: #a78bfa; border: 1px solid rgba(124, 58, 237, 0.3); flex: 4; }
+    .frame-crc { background: rgba(245, 158, 11, 0.15); color: var(--accent-warm); border: 1px solid rgba(245, 158, 11, 0.3); }
+
+    /* ===== SLIDE FOOTER ===== */
+    .slide-footer {
+      position: absolute;
+      bottom: -55px;
+      left: 0;
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.6rem;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      letter-spacing: 0.04em;
+      border-top: 1px solid var(--border-subtle);
+      padding-top: 8px;
+    }
+
+    /* ===== PRINT / PDF EXPORT ===== */
+    .export-fab {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 999;
+      display: flex;
+      gap: 8px;
+    }
+
+    .export-btn {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      padding: 10px 18px;
+      border-radius: 100px;
+      font-family: var(--font-heading);
+      font-weight: 500;
+      font-size: 0.75rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    }
+
+    .export-btn:hover {
+      border-color: var(--accent-primary);
+      color: var(--accent-primary);
+      box-shadow: 0 4px 20px rgba(0, 212, 255, 0.15);
+    }
+
+    /* ===== MODAL ===== */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(6, 8, 16, 0.88);
+      backdrop-filter: blur(8px);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-box {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--border-radius);
+      padding: 36px;
+      max-width: 520px;
+      width: 92%;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+      color: var(--text-primary);
+      position: relative;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 16px;
+      right: 20px;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 1.3rem;
+      transition: color 0.2s;
+    }
+
+    .modal-close:hover { color: var(--text-primary); }
+
+    .modal-box h3 {
+      font-family: var(--font-heading);
+      font-size: 1.3rem;
+      font-weight: 700;
+      margin: 0 0 16px;
+      color: var(--text-primary);
+    }
+
+    .modal-box ol {
+      font-size: 0.82rem;
+      text-align: left;
+      padding-left: 20px;
+      line-height: 1.85;
+      color: var(--text-secondary);
+    }
+
+    .modal-box code {
+      color: var(--accent-primary);
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      background: rgba(0, 212, 255, 0.08);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .modal-btn {
+      width: 100%;
+      margin-top: 20px;
+      padding: 12px;
+      background: var(--gradient-accent);
+      border: none;
+      border-radius: var(--border-radius-sm);
+      color: var(--bg-primary);
+      font-family: var(--font-heading);
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    .modal-btn:hover { opacity: 0.85; }
+
+    /* ===== PRINT MEDIA ===== */
+    @page { size: a4 landscape; margin: 0; }
+    @media print {
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        box-shadow: none !important;
+        text-shadow: none !important;
+        transition: none !important;
+        animation: none !important;
+      }
+      html, body, .reveal-viewport, .reveal, .reveal .slides,
+      .reveal .slides section, .pdf-page, .reveal .pdf-page,
+      .reveal .backgrounds, .reveal .slide-background,
+      .reveal .slide-background-content {
+        background: var(--bg-primary) !important;
+        background-color: var(--bg-primary) !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        outline: none !important;
+      }
+      html.reveal-print, html.reveal-print body {
+        background: var(--bg-primary) !important;
+        background-color: var(--bg-primary) !important;
+      }
+      .pdf-page, .reveal .pdf-page { overflow: visible !important; }
+      .reveal .slide-background, .reveal .slide-background-content {
+        top: -4px !important;
+        left: -4px !important;
+        width: calc(100% + 8px) !important;
+        height: calc(100% + 8px) !important;
+      }
+      .reveal .progress, .reveal .controls { display: none !important; }
+      .reveal .slides section {
+        height: auto !important;
+        min-height: 100% !important;
+        border: none !important;
+      }
+      .reveal pre code { max-height: none !important; }
+      .slide-footer { border-top: none !important; }
+      .export-fab { display: none !important; }
+      .radar-sweep { animation: none !important; transform: rotate(45deg); }
+      .radar-blip { animation: none !important; opacity: 0.9; }
+
+      /* Simple solid colors for cards and boxes */
+      .card {
+        background: #141829 !important;
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        transform: none !important;
+        padding: 18px !important;
+      }
+      
+      .img-placeholder {
+        background: #141829 !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+      }
+
+      .radar-widget {
+        background: #060a14 !important;
+        border: 2px solid var(--accent-primary) !important;
+      }
+
+      /* Text gradients to solid color fallback */
+      .stat-value, .text-gradient {
+        background: none !important;
+        -webkit-text-fill-color: var(--accent-primary) !important;
+        color: var(--accent-primary) !important;
+        background-clip: unset !important;
+        -webkit-background-clip: unset !important;
+      }
+      .text-gradient--warm {
+        background: none !important;
+        -webkit-text-fill-color: var(--accent-warm) !important;
+        color: var(--accent-warm) !important;
+        background-clip: unset !important;
+        -webkit-background-clip: unset !important;
+      }
+      .text-gradient--cool {
+        background: none !important;
+        -webkit-text-fill-color: var(--accent-emerald) !important;
+        color: var(--accent-emerald) !important;
+        background-clip: unset !important;
+        -webkit-background-clip: unset !important;
+      }
+
+      /* Solid lines for h2 underscores */
+      .reveal h2::after {
+        background: var(--accent-primary) !important;
+      }
+
+      /* High-contrast solid Gantt chart bars & milestones */
+      .gantt-chart {
+        background: #ffffff !important;
+        border-color: #cbd5e1 !important;
+        color: #0f172a !important;
+      }
+      .gantt-header-row {
+        border-bottom-color: #94a3b8 !important;
+      }
+      .gantt-row {
+        border-bottom-color: #e2e8f0 !important;
+      }
+      .gantt-row-even {
+        background: #f8fafc !important;
+      }
+      .gantt-label {
+        border-right-color: #cbd5e1 !important;
+      }
+      .gantt-task-title {
+        color: #0f172a !important;
+      }
+      .gantt-task-assignees {
+        color: #64748b !important;
+      }
+      .gantt-cell {
+        border-right-color: #e2e8f0 !important;
+      }
+      .bar-finished {
+        background: #10b981 !important;
+        border-color: #047857 !important;
+        color: #ffffff !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .bar-onprogress {
+        background: #0ea5e9 !important;
+        border-color: #0369a1 !important;
+        color: #ffffff !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .bar-planned {
+        background: #f1f5f9 !important;
+        border-color: #cbd5e1 !important;
+        color: #64748b !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .gantt-milestone-diamond {
+        background: #f59e0b !important;
+        border-color: #b45309 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        box-shadow: none !important;
+      }
+      .gantt-milestone-diamond.planned {
+        background: #e2e8f0 !important;
+        border-color: #94a3b8 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .gantt-legend {
+        color: #475569 !important;
+      }
+
+      /* Solid protocol frames */
+      .frame-sync { background: #004d61 !important; color: #00d4ff !important; border-color: #00d4ff !important; }
+      .frame-payload { background: #34125c !important; color: #a78bfa !important; border-color: #a78bfa !important; }
+      .frame-crc { background: #613b00 !important; color: #f59e0b !important; border-color: #f59e0b !important; }
+
+      /* Global size adjustments for landscape A4 printing */
+      .reveal h2 {
+        font-size: 1.8rem !important;
+        margin-bottom: 20px !important;
+        padding-bottom: 12px !important;
+      }
+      .grid-2, .grid-3, .grid-2-1, .grid-1-2 {
+        gap: 16px !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="reveal">
+    <div class="slides">
+
+      <!-- ═══════════ SLIDE 1: TITLE ═══════════ -->
+      <section data-background-transition="fade">
+        <div style="margin-top: 20px;">
+          <div style="display: flex; justify-content: center; gap: 10px; margin-bottom: 24px;">
+            <span class="badge badge--cyan">CENG 424</span>
+            <span class="badge badge--purple">Embedded Computer Systems</span>
+            <span class="badge badge--warm">Spring 2026</span>
+          </div>
+
+          <h1 style="font-size: 2.6rem; margin-bottom: 12px;">Distributed Architecture for<br>
+          <span class="text-gradient">Radar Simulation</span></h1>
+          <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 32px; font-family: var(--font-heading);">Secure Multi-Channel Scanning &amp; Moving Target Indication</p>
+
+          <div class="radar-widget" style="width: 80px; height: 80px; margin-bottom: 32px;">
+            <div class="radar-sweep"></div>
+            <div class="radar-ring radar-ring--2"></div>
+            <div class="radar-crosshair-h"></div>
+            <div class="radar-crosshair-v"></div>
+          </div>
+
+          <div class="grid-3" style="width: 80%; margin: 0 auto; border-top: 1px solid var(--border-subtle); padding-top: 20px;">
+            <div style="text-align: center;">
+              <p style="color: var(--accent-primary); font-weight: 600; font-family: var(--font-heading); margin: 0; font-size: 0.85rem;">Final Presentation</p>
+              <p style="color: var(--text-muted); margin: 4px 0; font-size: 0.78rem;">June 2026</p>
+            </div>
+            <div style="text-align: center;">
+              <p style="color: var(--text-primary); font-weight: 600; font-family: var(--font-heading); margin: 0; font-size: 0.85rem;">Izmir Institute of Technology</p>
+              <p style="color: var(--text-muted); margin: 4px 0; font-size: 0.78rem;">CENG Department</p>
+            </div>
+            <div style="text-align: center;">
+              <p style="color: var(--accent-warm); font-weight: 600; font-family: var(--font-heading); margin: 0; font-size: 0.85rem;">Group 10</p>
+              <p style="color: var(--text-muted); margin: 4px 0; font-size: 0.78rem;">B.A. Erol</p>
+            </div>
+          </div>
+        </div>
+        <div class="slide-footer"><span>CENG424 @ IZTECH</span><span>1 / 16</span></div>
+      </section>
+
+      <!-- ═══════════ SLIDE 2: OUTLINE ═══════════ -->
+      <section>
+        <h2>Outline</h2>
+        <div class="grid-2" style="margin-top: 24px; text-align: left;">
+          <div class="card">
+            <div style="margin-bottom: 14px;">
+              <p style="margin: 0; font-size: 0.85rem;"><span class="badge badge--cyan" style="margin-right: 8px;">01</span> <span class="bold" style="color: var(--text-primary); font-weight: 600;">Team Members</span></p>
+              <p style="margin: 4px 0 0 38px; font-size: 0.72rem; color: var(--text-muted);">Engineering roles and subsystem ownership across all project development stages.</p>
+            </div>
+            <div style="margin-bottom: 14px;">
+              <p style="margin: 0; font-size: 0.85rem;"><span class="badge badge--cyan" style="margin-right: 8px;">02</span> <span class="bold" style="color: var(--text-primary); font-weight: 600;">Project Overview</span></p>
+              <p style="margin: 4px 0 0 38px; font-size: 0.72rem; color: var(--text-muted);">Introduction to distributed topologies, core challenges, and architectural solutions.</p>
+            </div>
+            <div>
+              <p style="margin: 0; font-size: 0.85rem;"><span class="badge badge--cyan" style="margin-right: 8px;">03</span> <span class="bold" style="color: var(--text-primary); font-weight: 600;">System Specifications</span></p>
+              <p style="margin: 4px 0 0 38px; font-size: 0.72rem; color: var(--text-muted);">Comprehensive specs of hardware components, software modules, and secure protocol framing.</p>
+            </div>
+          </div>
+          <div class="card">
+            <div style="margin-bottom: 14px;">
+              <p style="margin: 0; font-size: 0.85rem;"><span class="badge badge--purple" style="margin-right: 8px;">04</span> <span class="bold" style="color: var(--text-primary); font-weight: 600;">Evaluation</span></p>
+              <p style="margin: 4px 0 0 38px; font-size: 0.72rem; color: var(--text-muted);">Gantt chart schedules, experimental results, and concrete deliverables.</p>
+            </div>
+            <div style="margin-bottom: 14px;">
+              <p style="margin: 0; font-size: 0.85rem;"><span class="badge badge--purple" style="margin-right: 8px;">05</span> <span class="bold" style="color: var(--text-primary); font-weight: 600;">Business Opportunities</span></p>
+              <p style="margin: 4px 0 0 38px; font-size: 0.72rem; color: var(--text-muted);">Analysis of the market gap, competitive landscape, and key target applications.</p>
+            </div>
+            <div>
+              <p style="margin: 0; font-size: 0.85rem;"><span class="badge badge--purple" style="margin-right: 8px;">06</span> <span class="bold" style="color: var(--text-primary); font-weight: 600;">Conclusion &amp; Demo</span></p>
+              <p style="margin: 4px 0 0 38px; font-size: 0.72rem; color: var(--text-muted);">Key takeaways, future roadmap considerations, and an interactive simulation demonstration.</p>
+            </div>
+          </div>
+        </div>
+        <div class="slide-footer"><span>CENG424 @ IZTECH</span><span>2 / 16</span></div>
+      </section>
+
+      <!-- ═══════════ SLIDE 3: TEAM ═══════════ -->
+      <section>
+        <h2>Team</h2>
+        <div class="team-grid">
+          <div class="team-card">
+            <div class="team-avatar">MA</div>
+            <h4>M. Akın Akdoğan</h4>
+            <h5>290201005</h5>
+            <ul>
+              <li>FreeRTOS scheduler config</li>
+              <li>POSIX termios listener</li>
+              <li>Vulkan swapchain setup</li>
+              <li>Framebuffer capture loop</li>
+            </ul>
+          </div>
+          <div class="team-card">
+            <div class="team-avatar">YS</div>
+            <h4>Yiğit Sarıyar</h4>
+            <h5>290201053</h5>
+            <ul>
+              <li>Sensor driver scheduling</li>
+              <li>Circular sweep buffering</li>
+              <li>Nearest-Neighbor tracking</li>
+              <li>PBM pixel thresholding</li>
+            </ul>
+          </div>
+          <div class="team-card">
+            <div class="team-avatar">MK</div>
+            <h4>Meriç Kelemeden</h4>
+            <h5>290201091</h5>
+            <ul>
+              <li>XTEA encryption routines</li>
+              <li>Decryption verification</li>
+              <li>Parallel compute shaders</li>
+              <li>ESC/POS printer protocol</li>
+            </ul>
+          </div>
+          <div class="team-card">
+            <div class="team-avatar">NA</div>
+            <h4>Necla Akyol</h4>
+            <h5>300201038</h5>
+            <ul>
+              <li>Frame structure &amp; CRC</li>
+              <li>C++ parsing validation</li>
+              <li>Distance threshold calibration</li>
+              <li>Thermal receipt layout</li>
+            </ul>
+          </div>
+          <div class="team-card">
+            <div class="team-avatar">YZ</div>
+            <h4>Yusuf C. Zeybek</h4>
+            <h5>310201105</h5>
+            <ul>
+              <li>Non-blocking UART ISR</li>
+              <li>Sweep boundary state logic</li>
+              <li>Polar-to-world conversion</li>
+              <li>GLSL CRT phosphor decay</li>
+            </ul>
+          </div>
+        </div>
+        <div class="slide-footer"><span>CENG424 @ IZTECH</span><span>3 / 16</span></div>
+      </section>
+
+      <!-- ═══════════ SLIDE 4: INTRODUCTION ═══════════ -->
+      <section>
+        <h2>Project Overview: Introduction</h2>
+        <div class="grid-2" style="text-align: left;">
+          <div class="card card--accent-top">
+            <h3>Secure Distributed Architecture</h3>
+            <p style="font-size: 0.76rem; margin-bottom: 12px; line-height: 1.5; color: var(--text-secondary);">
+              Traditional single-node systems execute motor sweeps, measurements, and rendering in a sequential loop. This blocks execution during sensor wait times and results in scanning blind spots. We resolve this by partitioning tasks across two main nodes:
+            </p>
+            <ul class="feature-list" style="font-size: 0.74rem;">
+              <li><span class="bold">Node 1 (Sensor Node):</span> Governed by FreeRTOS on an ATmega328P to schedule three servos and ultrasonic sensors in a round-robin loop, encrypting telemetry data into secure frames.</li>
+              <li><span class="bold">Node 2 (Edge Node):</span> A multi-threaded C++20 backend running on an NVIDIA Jetson Nano that handles raw serial ingestion, frame decryption, spatial association, and real-time GPU rendering.</li>
+            </ul>
+          </div>
+          <div class="card card--warm-top">
+            <h3>Moving Target Indication</h3>
+            <p style="font-size: 0.76rem; margin-bottom: 10px; line-height: 1.5; color: var(--text-secondary);">
+              Rather than plotting static, isolated point blips, our MTI engine analyzes target movements across consecutive sweeps. The system tracks coordinates, applies a Nearest-Neighbor Euclidean association filter, and estimates velocity vectors to predict headings:
+            </p>
+            <div style="margin: 6px 0; font-size: 0.78rem; color: var(--accent-primary); font-family: var(--font-mono); text-align: center;">
+              $$\vec{d}_i = (x_{t,i} - x_{t-1,i},\, y_{t,i} - y_{t-1,i})$$
+            </div>
+            <div style="margin: 6px 0; font-size: 0.78rem; color: var(--accent-primary); font-family: var(--font-mono); text-align: center;">
+              $$v_i = \|\vec{d}_i\| / \Delta t$$
+            </div>
+            <p style="font-size: 0.7rem; color: var(--text-muted); line-height: 1.4; margin-top: 10px;">
+              Computed displacements are mapped to speed and heading parameters, which are rendered as glowing, directional velocity arrows on a Plan Position Indicator (PPI) screen.
+            </p>
+          </div>
+        </div>
+        <div class="slide-footer"><span>CENG424 @ IZTECH</span><span>4 / 16</span></div>
+      </section>
+
+      <!-- ═══════════ SLIDE 5: PROBLEM DEFINITION ═══════════ -->
+      <section>
+        <h2>Problem Definition</h2>
+        <div class="grid-2" style="text-align: left;">
+          <div class="card" style="border-left: 3px solid var(--accent-primary); padding: 22px;">
+            <h3 style="font-size: 0.95rem; margin-bottom: 8px;">1. Processing and Timing Bottlenecks</h3>
+            <p style="font-size: 0.74rem; line-height: 1.45; margin: 0;">
+              Sequential execution of motor control, polling, and graphics introduces CPU blocking during acoustic echo windows ($\approx 5.8\text{ ms}$ round-trip for 1 meter). This causes sweeping delays and creates angular blind spots where moving targets bypass detection.
+            </p>
+          </div>
+          <div class="card" style="border-left: 3px solid var(--accent-secondary); padding: 22px;">
+            <h3 style="font-size: 0.95rem; margin-bottom: 8px;">2. Communication Link Vulnerability</h3>
+            <p style="font-size: 0.74rem; line-height: 1.45; margin: 0;">
+              Standard serial lines lack encryption and parity safeguards. Electromagnetic interference (EMI) from motors causes random bit flips, resulting in phantom coordinates or missed blips. Additionally, unsecure lines are vulnerable to target spoofing or packet injection.
+            </p>
+          </div>
+          <div class="card" style="border-left: 3px solid var(--accent-warm); padding: 22px;">
+            <h3 style="font-size: 0.95rem; margin-bottom: 8px;">3. Absence of Target Tracking</h3>
+            <p style="font-size: 0.74rem; line-height: 1.45; margin: 0;">
+              Basic systems plot only instantaneous distance points without historical association. Without correlating detections across consecutive sweeps, operators cannot derive motion parameters like velocity or heading, making it impossible to analyze target trajectories.
+            </p>
+          </div>
+          <div class="card" style="border-left: 3px solid var(--accent-rose); padding: 22px;">
+            <h3 style="font-size: 0.95rem; margin-bottom: 8px;">4. Volatile Logging Constraints</h3>
+            <p style="font-size: 0.74rem; line-height: 1.45; margin: 0;">
+              Digital storage media on edge nodes can be easily modified, corrupted, or wiped. A malicious actor with local operating system access can alter sweep data. An independent, tamper-evident, and physical logging mechanism is needed for tactical audit trails.
+            </p>
+          </div>
+        </div>
+        <div class="slide-footer"><span>CENG424 @ IZTECH</span><span>5 / 16</span></div>
+      </section>
+
+      <!-- ═══════════ SLIDE 6: CHALLENGES & SOLUTIONS ═══════════ -->
+      <section>
+        <h2>Challenges &amp; Solutions</h2>
+        <div class="grid-2" style="text-align: left;">
+          <div class="card">
+            <h3 style="margin-bottom: 14px;">Hardware &amp; Cryptography</h3>
+            <ul class="feature-list" style="font-size: 0.75rem;">
+              <li>
+                <span class="bold">Acoustic Crosstalk:</span> Firing multiple ultrasonic sensors simultaneously causes echo signals to interfere, resulting in false range measurements.
+                <div style="margin-top: 6px;"><span class="badge badge--emerald">Round-Robin Sequence + 5 ms Settle Delay</span></div>
+                <p style="font-size: 0.68rem; margin: 4px 0 0; line-height: 1.4; color: var(--text-muted);">
+                  Sensors are triggered sequentially (Main &rightarrow; Left &rightarrow; Right) with a 5 ms delay, allowing echoes to decay before the next channel is polled.
+                </p>
+              </li>
+              <li style="margin-top: 16px;">
+                <span class="bold">8-bit MCU Constraints:</span> Standard encryption like AES-128 is highly memory-intensive and exceeds the 2 KB SRAM budget on the ATmega328P.
+                <div style="margin-top: 6px;"><span class="badge badge--cyan">Lightweight XTEA Block Cipher (ECB Mode)</span></div>
+                <p style="font-size: 0.68rem; margin: 4px 0 0; line-height: 1.4; color: var(--text-muted);">
+                  We implement XTEA (32 rounds, 128-bit key) in under 20 lines of C. It uses simple bit shifts and additions, avoiding S-boxes and operating in constant time.
+                </p>
+              </li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3 style="margin-bottom: 14px;">Ingestion &amp; Rendering</h3>
+            <ul class="feature-list" style="font-size: 0.75rem;">
+              <li>
+                <span class="bold">Real-Time Ingestion:</span> Reading continuous, high-baud rate serial telemetry (115200) without dropping packets on a multi-tasking OS like Ubuntu.
+                <div style="margin-top: 6px;"><span class="badge badge--purple">Asymmetric POSIX termios Thread</span></div>
+                <p style="font-size: 0.68rem; margin: 4px 0 0; line-height: 1.4; color: var(--text-muted);">
+                  A dedicated C++ serial thread bypasses system formatting by setting termios to raw input mode, continuously filling a thread-safe circular sweep buffer.
+                </p>
+              </li>
+              <li style="margin-top: 16px;">
+                <span class="bold">GPU Parallelization:</span> Running Nearest-Neighbor spatial distance association and drawing smooth graphics in real time is computationally heavy.
+                <div style="margin-top: 6px;"><span class="badge badge--cyan">Vulkan Compute Shaders for MTI</span></div>
+                <p style="font-size: 0.68rem; margin: 4px 0 0; line-height: 1.4; color: var(--text-muted);">
+                  The C++ backend offloads target tracking calculations to Vulkan compute shader work groups, parallelizing spatial math directly on the Jetson Nano GPU.
+                </p>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div class="slide-footer"><span>CENG424 @ IZTECH</span><span>6 / 16</span></div>
+      </section>
+
+      <!-- ═══════════ SLIDE 7: SOLUTIONS CODE ═══════════ -->
+      <section>
+        <h2>Solutions: Implementation</h2>
+        <div class="grid-2" style="text-align: left;">
+          <div class="card">
+            <h3>FreeRTOS Task Pipeline</h3>
+            <pre style="margin: 10px 0;"><code class="language-cpp" style="font-size: 0.6rem; max-height: 170px;">rawDataQueue = xQueueCreate(5, sizeof(RawData3));
+txQueue      = xQueueCreate(5, sizeof(TelemetryFrame));
+if (rawDataQueue != NULL && txQueue != NULL) {
+  xTaskCreate(TaskUARTDispatch,    "UART",   90,  NULL, 3, NULL);
+  xTaskCreate(TaskSecurity,        "Crypto", 160, NULL, 2, NULL);
+  xTaskCreate(TaskScanCoordinator, "Scan",   200, NULL, 1, NULL);
+}</code></pre>
+            <p style="font-size: 0.7rem; line-height: 1.45; color: var(--text-secondary);">
+              By decoupling sensor sampling, XTEA encryption, and UART transmission into three separate tasks communicating via FreeRTOS queues, we prevent timing overruns and maintain a deterministic sweep rate.
+            </p>
+          </div>
+          <div class="card">
+            <h3>XTEA Block Cipher</h3>
+            <pre style="margin: 10px 0;"><code class="language-cpp" style="font-size: 0.6rem; max-height: 170px;">void xtea_encrypt(uint32_t v[2], uint32_t const key[4]) {
+  uint32_t v0 = v[0], v1 = v[1], sum = 0;
+  uint32_t delta = 0x9E3779B9;
+  for (unsigned int i = 0; i < 32; i++) {
+    v0 += (((v1 << 4) ^ (v1 >> 5)) + v1) ^ (sum + key[sum & 3]);
+    sum += delta;
+    v1 += (((v0 << 4) ^ (v0 >> 5)) + v0) ^ (sum + key[(sum>>11) & 3]);
+  }
+  v[0] = v0; v[1] = v1;
+}</code></pre>
+            <p style="font-size: 0.7rem; line-height: 1.45; color: var(--text-secondary);">
+              XTEA operates as a constant-time 64-bit block cipher with a 128-bit key. It relies on a golden ratio constant ($\delta = 0\text{x}9E3779B9$) for bit diffusion, ensuring cryptographic resistance to side-channel timing leaks.
+            </p>
+          </div>
+        </div>
+        <div class="slide-footer"><span>CENG424 @ IZTECH</span><span>7 / 16</span></div>
+      </section>
+
+      <!-- ═══════════ SLIDE 8: SPECIFICATIONS ═══════════ -->
+      <section>
+        <h2>System Specifications</h2>
+        <div class="grid-3" style="text-align: left;">
+          <div class="card" style="padding: 16px;">
+            <h3 style="text-align: center; margin-bottom: 10px;">Hardware Stack</h3>
+            <ul class="feature-list" style="font-size: 0.66rem; line-height: 1.4;">
+              <li><span class="bold">Arduino Uno:</span> Governed by FreeRTOS on ATmega328P to schedule polling and serial serialization.</li>
+              <li><span class="bold">MG90S Servos:</span> Three metal-gear micro servos sweeping independent overlapping arcs.</li>
+              <li><span class="bold">HC-SR04 Sensors:</span> Two ultrasonic modules measuring distance for Main and Left channels.</li>
+              <li><span class="bold">HY-SRF05 Sensor:</span> One ultrasonic sensor utilized for the Right channel flank.</li>
+              <li><span class="bold">Jetson Nano:</span> ARM host executing multi-threaded tracking and Vulkan PPI shaders.</li>
+              <li><span class="bold">Thermal Printer:</span> 58mm USB printer processing raster logs via ESC/POS command sequences.</li>
+            </ul>
+          </div>
+          <div class="card" style="padding: 16px;">
+            <h3 style="text-align: center; margin-bottom: 10px;">Software Stack</h3>
+            <ul class="feature-list" style="font-size: 0.66rem; line-height: 1.4;">
+              <li><span class="bold">Firmware:</span> FreeRTOS task partition with raw serial ISR dispatch on ATmega328P.</li>
+              <li><span class="bold">Backend:</span> Multi-threaded C++20 application managing raw serial ingestion and data processing.</li>
+              <li><span class="bold">Vulkan UI:</span> High-performance graphics pipeline utilizing double-buffered swapchains.</li>
+              <li><span class="bold">Shaders:</span> GLSL compute shader parallel tracking and CRT decay fragment shaders.</li>
+              <li><span class="bold">Simulink:</span> Full-system simulation built programmatically via MATLAB API scripts.</li>
+              <li><span class="bold">Tests:</span> Google Test framework validating protocol parsing and XTEA block decryption.</li>
+            </ul>
+          </div>
+          <div class="card" style="padding: 16px;">
+            <h3 style="text-align: center; margin-bottom: 10px;">Secure Protocol</h3>
+            <div class="frame-viz">
+              <div class="frame-segment frame-sync">0xAA<br>0x55</div>
+              <div class="frame-segment frame-payload">16B XTEA Encrypted<br>Telemetry</div>
+              <div class="frame-segment frame-crc">CRC16<br>CCITT</div>
+            </div>
+            <p style="font-size: 0.68rem; color: var(--text-secondary); line-height: 1.45; margin-top: 8px;">
+              Telemetry is packaged into a 20-byte fixed-size frame transmitted over UART at 115200 baud. The 16-byte plaintext payload is encrypted using dual-block XTEA. A 16-bit CRC-16 CCITT trailer (poly 0x1021) is calculated over the header and ciphertext, providing a 99.998% error detection probability.
+            </p>
+          </div>
+        </div>
+        <div class="slide-footer"><span>CENG424 @ IZTECH</span><span>8 / 16</span></div>
+      </section>
+
+      <!-- ═══════════ SLIDE 9: ARCHITECTURE DIAGRAM (IMAGE SLOT) ═══════════ -->
+      <section>
+        <h2>System Architecture</h2>
+        <div class="grid-2-1" style="text-align: left;">
+          <div class="card" style="padding: 32px; display: flex; flex-direction: column; justify-content: center;">
+            <h3>Distributed Dataflow Routing</h3>
+            <p style="font-size: 0.85rem; line-height: 1.6; color: var(--text-secondary); margin: 0;">
+              The distributed physical architecture routes raw sensor signals from three overlapping sweep channels through the Arduino Uno. Hard real-time constraints are managed via a FreeRTOS coordinator task. Secure, encrypted telemetry is serialized and transmitted over UART to the NVIDIA Jetson Nano edge processor, which handles heavy computational tracking and rendering.
+            </p>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 12px; justify-content: center;">
+            <div class="card" style="padding: 16px;">
+              <div class="stat-box">
+                <div class="stat-value">3</div>
+                <div class="stat-label">SENSOR CHANNELS</div>
+              </div>
+            </div>
+            <div class="card" style="padding: 16px;">
+              <div class="stat-box">
+                <div class="stat-value">20B</div>
+                <div class="stat-label">FRAME SIZE</div>
+              </div>
+            </div>
+            <div class="card" style="padding: 16px;">
+              <div class="stat-box">
+                <div class="stat-value">60+</div>
+                <div class="stat-label">FPS (VULKAN)</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="slide-footer"><span>CENG424 @ IZTECH</span><span>9 / 16</span></div>
+      </section>
+
+      <!-- ═══════════ SLIDE 10: GANTT CHART ═══════════ -->
+      <section>
+        <h2>Evaluation: Gantt Chart</h2>
+        <p style="font-size: 0.76rem; color: var(--text-secondary); margin-bottom: 14px; line-height: 1.45; max-width: 90%; text-align: left; margin-left: auto; margin-right: auto;">
+          The development timeline spans 14 weeks, divided into 5 distinct engineering stages. By overlapping hardware calibration with backend software development, the team parallelized efforts to resolve critical path dependencies, concluding with final integration and cross-validation tests.
+        </p>
+        <div class="gantt-chart">
+          <div class="gantt-header-row">
+            <div class="gantt-header-cell label-col">Task / Milestone</div>
+            <div class="gantt-header-cell">W1<span class="gantt-date">Feb 23</span></div>
+            <div class="gantt-header-cell">W2<span class="gantt-date">Mar 02</span></div>
+            <div class="gantt-header-cell">W3<span class="gantt-date">Mar 09</span></div>
+            <div class="gantt-header-cell">W4<span class="gantt-date">Mar 16</span></div>
+            <div class="gantt-header-cell">W5<span class="gantt-date">Mar 23</span></div>
+            <div class="gantt-header-cell">W6<span class="gantt-date">Mar 30</span></div>
+            <div class="gantt-header-cell">W7<span class="gantt-date">Apr 06</span></div>
+            <div class="gantt-header-cell">W8<span class="gantt-date">Apr 13</span></div>
+            <div class="gantt-header-cell">W9<span class="gantt-date">Apr 20</span></div>
+            <div class="gantt-header-cell">W10<span class="gantt-date">Apr 27</span></div>
+            <div class="gantt-header-cell">W11<span class="gantt-date">May 04</span></div>
+            <div class="gantt-header-cell">W12<span class="gantt-date">May 11</span></div>
+            <div class="gantt-header-cell">W13<span class="gantt-date">May 18</span></div>
+            <div class="gantt-header-cell">W14<span class="gantt-date">May 25</span></div>
+          </div>
+
+          <!-- Row 1: Concept & Requirement Analysis -->
+          <div class="gantt-row">
+            <div class="gantt-label">
+              <span class="gantt-task-title">Concept &amp; Requirement Analysis</span>
+              <span class="gantt-task-assignees">Mete, Yiğit, Meriç, Necla, Yusuf</span>
+            </div>
+            <div class="gantt-cell" style="grid-column: 2;"></div>
+            <div class="gantt-cell" style="grid-column: 3;"></div>
+            <div class="gantt-cell" style="grid-column: 4;"></div>
+            <div class="gantt-cell" style="grid-column: 5;"></div>
+            <div class="gantt-cell" style="grid-column: 6;"></div>
+            <div class="gantt-cell" style="grid-column: 7;"></div>
+            <div class="gantt-cell" style="grid-column: 8;"></div>
+            <div class="gantt-cell" style="grid-column: 9;"></div>
+            <div class="gantt-cell" style="grid-column: 10;"></div>
+            <div class="gantt-cell" style="grid-column: 11;"></div>
+            <div class="gantt-cell" style="grid-column: 12;"></div>
+            <div class="gantt-cell" style="grid-column: 13;"></div>
+            <div class="gantt-cell" style="grid-column: 14;"></div>
+            <div class="gantt-cell" style="grid-column: 15;"></div>
+            <div class="gantt-bar bar-finished" style="grid-column: 2 / 5;">W1 - W3</div>
+          </div>
+
+          <!-- Row 2: Project Proposal & Submission -->
+          <div class="gantt-row gantt-row-even">
+            <div class="gantt-label">
+              <span class="gantt-task-title">Project Proposal &amp; Submission</span>
+              <span class="gantt-task-assignees">Necla, Yusuf, Meriç</span>
+            </div>
+            <div class="gantt-cell" style="grid-column: 2;"></div>
+            <div class="gantt-cell" style="grid-column: 3;"></div>
+            <div class="gantt-cell" style="grid-column: 4;"></div>
+            <div class="gantt-cell" style="grid-column: 5;"></div>
+            <div class="gantt-cell" style="grid-column: 6;"></div>
+            <div class="gantt-cell" style="grid-column: 7;"></div>
+            <div class="gantt-cell" style="grid-column: 8;"></div>
+            <div class="gantt-cell" style="grid-column: 9;"></div>
+            <div class="gantt-cell" style="grid-column: 10;"></div>
+            <div class="gantt-cell" style="grid-column: 11;"></div>
+            <div class="gantt-cell" style="grid-column: 12;"></div>
+            <div class="gantt-cell" style="grid-column: 13;"></div>
+            <div class="gantt-cell" style="grid-column: 14;"></div>
+            <div class="gantt-cell" style="grid-column: 15;"></div>
+            <div class="gantt-bar bar-finished" style="grid-column: 3 / 6;">W2 - W4</div>
+          </div>
+
+          <!-- Row 3: Proposal Approved (Milestone) -->
+          <div class="gantt-row">
+            <div class="gantt-label">
+              <span class="gantt-task-title">Proposal Approved</span>
+              <span class="gantt-task-assignees">Milestone</span>
+            </div>
+            <div class="gantt-cell" style="grid-column: 2;"></div>
+            <div class="gantt-cell" style="grid-column: 3;"></div>
+            <div class="gantt-cell" style="grid-column: 4;"></div>
+            <div class="gantt-cell" style="grid-column: 5;"></div>
+            <div class="gantt-cell" style="grid-column: 6;"></div>
+            <div class="gantt-cell" style="grid-column: 7;"></div>
+            <div class="gantt-cell" style="grid-column: 8;"></div>
+            <div class="gantt-cell" style="grid-column: 9;"></div>
+            <div class="gantt-cell" style="grid-column: 10;"></div>
+            <div class="gantt-cell" style="grid-column: 11;"></div>
+            <div class="gantt-cell" style="grid-column: 12;"></div>
+            <div class="gantt-cell" style="grid-column: 13;"></div>
+            <div class="gantt-cell" style="grid-column: 14;"></div>
+            <div class="gantt-cell" style="grid-column: 15;"></div>
+            <div class="gantt-milestone-container" style="grid-column: 6;">
+              <div class="gantt-milestone-diamond"></div>
+            </div>
+          </div>
+
+          <!-- Row 4: Sensor Drivers & Polling (FreeRTOS) -->
+          <div class="gantt-row gantt-row-even">
+            <div class="gantt-label">
+              <span class="gantt-task-title">Sensor Drivers &amp; Polling (FreeRTOS)</span>
+              <span class="gantt-task-assignees">Yiğit, Mete</span>
+            </div>
+            <div class="gantt-cell" style="grid-column: 2;"></div>
+            <div class="gantt-cell" style="grid-column: 3;"></div>
+            <div class="gantt-cell" style="grid-column: 4;"></div>
+            <div class="gantt-cell" style="grid-column: 5;"></div>
+            <div class="gantt-cell" style="grid-column: 6;"></div>
+            <div class="gantt-cell" style="grid-column: 7;"></div>
+            <div class="gantt-cell" style="grid-column: 8;"></div>
+            <div class="gantt-cell" style="grid-column: 9;"></div>
+            <div class="gantt-cell" style="grid-column: 10;"></div>
+            <div class="gantt-cell" style="grid-column: 11;"></div>
+            <div class="gantt-cell" style="grid-column: 12;"></div>
+            <div class="gantt-cell" style="grid-column: 13;"></div>
+            <div class="gantt-cell" style="grid-column: 14;"></div>
+            <div class="gantt-cell" style="grid-column: 15;"></div>
+            <div class="gantt-bar bar-finished" style="grid-column: 4 / 8;">W3 - W6</div>
+          </div>
+
+          <!-- Row 5: UART Serial Ingestion & Parsing -->
+          <div class="gantt-row">
+            <div class="gantt-label">
+              <span class="gantt-task-title">UART Serial Ingestion &amp; Parsing</span>
+              <span class="gantt-task-assignees">Mete, Yusuf</span>
+            </div>
+            <div class="gantt-cell" style="grid-column: 2;"></div>
+            <div class="gantt-cell" style="grid-column: 3;"></div>
+            <div class="gantt-cell" style="grid-column: 4;"></div>
+            <div class="gantt-cell" style="grid-column: 5;"></div>
+            <div class="gantt-cell" style="grid-column: 6;"></div>
+            <div class="gantt-cell" style="grid-column: 7;"></div>
+            <div class="gantt-cell" style="grid-column: 8;"></div>
+            <div class="gantt-cell" style="grid-column: 9;"></div>
+            <div class="gantt-cell" style="grid-column: 10;"></div>
+            <div class="gantt-cell" style="grid-column: 11;"></div>
+            <div class="gantt-cell" style="grid-column: 12;"></div>
+            <div class="gantt-cell" style="grid-column: 13;"></div>
+            <div class="gantt-cell" style="grid-column: 14;"></div>
+            <div class="gantt-cell" style="grid-column: 15;"></div>
+            <div class="gantt-bar bar-finished" style="grid-column: 6 / 10;">W5 - W8</div>
+          </div>
+
+          <!-- Row 6: XTEA Cryptography & CRC-16 CCITT -->
+          <div class="gantt-row gantt-row-even">
+            <div class="gantt-label">
+              <span class="gantt-task-title">XTEA Cryptography &amp; CRC-16</span>
+              <span class="gantt-task-assignees">Meriç, Necla</span>
+            </div>
+            <div class="gantt-cell" style="grid-column: 2;"></div>
+            <div class="gantt-cell" style="grid-column: 3;"></div>
+            <div class="gantt-cell" style="grid-column: 4;"></div>
+            <div class="gantt-cell" style="grid-column: 5;"></div>
+            <div class="gantt-cell" style="grid-column: 6;"></div>
+            <div class="gantt-cell" style="grid-column: 7;"></div>
+            <div class="gantt-cell" style="grid-column: 8;"></div>
+            <div class="gantt-cell" style="grid-column: 9;"></div>
+            <div class="gantt-cell" style="grid-column: 10;"></div>
+            <div class="gantt-cell" style="grid-column: 11;"></div>
+            <div class="gantt-cell" style="grid-column: 12;"></div>
+            <div class="gantt-cell" style="grid-column: 13;"></div>
+            <div class="gantt-cell" style="grid-column: 14;"></div>
+            <div class="gantt-cell" style="grid-column: 15;"></div>
+            <div class="gantt-bar bar-finished" style="grid-column: 5 / 10;">W4 - W8</div>
+          </div>
+
+          <!-- Row 7: Firmware & Link Verification (Milestone) -->
+          <div class="gantt-row">
+            <div class="gantt-label">
+              <span class="gantt-task-title">Firmware &amp; Link Verification</span>
+              <span class="gantt-task-assignees">Milestone</span>
+            </div>
+            <div class="gantt-cell" style="grid-column: 2;"></div>
+            <div class="gantt-cell" style="grid-column: 3;"></div>
+            <div class="gantt-cell" style="grid-column: 4;"></div>
+            <div class="gantt-cell" style="grid-column: 5;"></div>
+            <div class="gantt-cell" style="grid-column: 6;"></div>
+            <div class="gantt-cell" style="grid-column: 7;"></div>
+            <div class="gantt-cell" style="grid-column: 8;"></div>
+            <div class="gantt-cell" style="grid-column: 9;"></div>
+            <div class="gantt-cell" style="grid-column: 10;"></div>
+            <div class="gantt-cell" style="grid-column: 11;"></div>
+            <div class="gantt-cell" style="grid-column: 12;"></div>
+            <div class="gantt-cell" style="grid-column: 13;"></div>
+            <div class="gantt-cell" style="grid-column: 14;"></div>
+            <div class="gantt-cell" style="grid-column: 15;"></div>
+            <div class="gantt-milestone-container" style="grid-column: 10;">
+              <div class="gantt-milestone-diamond"></div>
+            </div>
+          </div>
+
+          <!-- Row 8: Vulkan Device & Swapchain Setup -->
+          <div class="gantt-row gantt-row-even">
+            <div class="gantt-label">
+              <span class="gantt-task-title">Vulkan Device &amp; Swapchain Setup</span>
+              <span class="gantt-task-assignees">Mete</span>
+            </div>
+            <div class="gantt-cell" style="grid-column: 2;"></div>
+            <div class="gantt-cell" style="grid-column: 3;"></div>
+            <div class="gantt-cell" style="grid-column: 4;"></div>
+            <div class="gantt-cell" style="grid-column: 5;"></div>
+            <div class="gantt-cell" style="grid-column: 6;"></div>
+            <div class="gantt-cell" style="grid-column: 7;"></div>
+            <div class="gantt-cell" style="grid-column: 8;"></div>
+            <div class="gantt-cell" style="grid-column: 9;"></div>
+            <div class="gantt-cell" style="grid-column: 10;"></div>
+            <div class="gantt-cell" style="grid-column: 11;"></div>
+            <div class="gantt-cell" style="grid-column: 12;"></div>
+            <div class="gantt-cell" style="grid-column: 13;"></div>
+            <div class="gantt-cell" style="grid-column: 14;"></div>
+            <div class="gantt-cell" style="grid-column: 15;"></div>
+            <div class="gantt-bar bar-finished" style="grid-column: 8 / 11;">W7 - W9</div>
+          </div>
+
+          <!-- Row 9: Coordinate Math & NN Association -->
+          <div class="gantt-row">
+            <div class="gantt-label">
+              <span class="gantt-task-title">Coordinate Math &amp; NN Association</span>
+              <span class="gantt-task-assignees">Yusuf, Yiğit, Necla</span>
+            </div>
+            <div class="gantt-cell" style="grid-column: 2;"></div>
+            <div class="gantt-cell" style="grid-column: 3;"></div>
+            <div class="gantt-cell" style="grid-column: 4;"></div>
+            <div class="gantt-cell" style="grid-column: 5;"></div>
+            <div class="gantt-cell" style="grid-column: 6;"></div>
+            <div class="gantt-cell" style="grid-column: 7;"></div>
+            <div class="gantt-cell" style="grid-column: 8;"></div>
+            <div class="gantt-cell" style="grid-column: 9;"></div>
+            <div class="gantt-cell" style="grid-column: 10;"></div>
+            <div class="gantt-cell" style="grid-column: 11;"></div>
+            <div class="gantt-cell" style="grid-column: 12;"></div>
+            <div class="gantt-cell" style="grid-column: 13;"></div>
+            <div class="gantt-cell" style="grid-column: 14;"></div>
+            <div class="gantt-cell" style="grid-column: 15;"></div>
+            <div class="gantt-bar bar-finished" style="grid-column: 9 / 12;">W8 - W10</div>
+          </div>
+
+          <!-- Row 10: GLSL Compute & CRT Shaders -->
+          <div class="gantt-row gantt-row-even">
+            <div class="gantt-label">
+              <span class="gantt-task-title">GLSL Compute &amp; CRT Shaders</span>
+              <span class="gantt-task-assignees">Meriç, Yusuf</span>
+            </div>
+            <div class="gantt-cell" style="grid-column: 2;"></div>
+            <div class="gantt-cell" style="grid-column: 3;"></div>
+            <div class="gantt-cell" style="grid-column: 4;"></div>
+            <div class="gantt-cell" style="grid-column: 5;"></div>
+            <div class="gantt-cell" style="grid-column: 6;"></div>
+            <div class="gantt-cell" style="grid-column: 7;"></div>
+            <div class="gantt-cell" style="grid-column: 8;"></div>
+            <div class="gantt-cell" style="grid-column: 9;"></div>
+            <div class="gantt-cell" style="grid-column: 10;"></div>
+            <div class="gantt-cell" style="grid-column: 11;"></div>
+            <div class="gantt-cell" style="grid-column: 12;"></div>
+            <div class="gantt-cell" style="grid-column: 13;"></div>
+            <div class="gantt-cell" style="grid-column: 14;"></div>
+            <div class="gantt-cell" style="grid-column: 15;"></div>
+            <div class="gantt-bar bar-finished" style="grid-column: 10 / 14;">W9 - W12</div>
+          </div>
+
+          <!-- Row 11: Tracking Engine Complete (Milestone) -->
+          <div class="gantt-row">
+            <div class="gantt-label">
+              <span class="gantt-task-title">Tracking Engine Complete</span>
+              <span class="gantt-task-assignees">Milestone</span>
+            </div>
+            <div class="gantt-cell" style="grid-column: 2;"></div>
+            <div class="gantt-cell" style="grid-column: 3;"></div>
+            <div class="gantt-cell" style="grid-column: 4;"></div>
+            <div class="gantt-cell" style="grid-column: 5;"></div>
+            <div class="gantt-cell" style="grid-column: 6;"></div>
+            <div class="gantt-cell" style="grid-column: 7;"></div>
+            <div class="gantt-cell" style="grid-column: 8;"></div>
+            <div class="gantt-cell" style="grid-column: 9;"></div>
+            <div class="gantt-cell" style="grid-column: 10;"></div>
+            <div class="gantt-cell" style="grid-column: 11;"></div>
+            <div class="gantt-cell" style="grid-column: 12;"></div>
+            <div class="gantt-cell" style="grid-column: 13;"></div>
+            <div class="gantt-cell" style="grid-column: 14;"></div>
+            <div class="gantt-cell" style="grid-column: 15;"></div>
+            <div class="gantt-milestone-container" style="grid-column: 14;">
+              <div class="gantt-milestone-diamond"></div>
+            </div>
+          </div>
+
+          <!-- Row 12: Monochrome & Thermal Logging -->
+          <div class="gantt-row gantt-row-even">
+            <div class="gantt-label">
+              <span class="gantt-task-title">Monochrome &amp; Thermal Logging</span>
+              <span class="gantt-task-assignees">Mete, Yiğit, Meriç</span>
+            </div>
+            <div class="gantt-cell" style="grid-column: 2;"></div>
+            <div class="gantt-cell" style="grid-column: 3;"></div>
+            <div class="gantt-cell" style="grid-column: 4;"></div>
+            <div class="gantt-cell" style="grid-column: 5;"></div>
+            <div class="gantt-cell" style="grid-column: 6;"></div>
+            <div class="gantt-cell" style="grid-column: 7;"></div>
+            <div class="gantt-cell" style="grid-column: 8;"></div>
+            <div class="gantt-cell" style="grid-column: 9;"></div>
+            <div class="gantt-cell" style="grid-column: 10;"></div>
+            <div class="gantt-cell" style="grid-column: 11;"></div>
+            <div class="gantt-cell" style="grid-column: 12;"></div>
+            <div class="gantt-cell" style="grid-column: 13;"></div>
+            <div class="gantt-cell" style="grid-column: 14;"></div>
+            <div class="gantt-cell" style="grid-column: 15;"></div>
+            <div class="gantt-bar bar-finished" style="grid-column: 12 / 15;">W11 - W13</div>
+          </div>
+
+          <!-- Row 13: Async Spooler Integration -->
+          <div class="gantt-row">
+            <div class="gantt-label">
+              <span class="gantt-task-title">Async Spooler Integration</span>
+              <span class="gantt-task-assignees">Yusuf, Necla</span>
+            </div>
+            <div class="gantt-cell" style="grid-column: 2;"></div>
+            <div class="gantt-cell" style="grid-column: 3;"></div>
+            <div class="gantt-cell" style="grid-column: 4;"></div>
+            <div class="gantt-cell" style="grid-column: 5;"></div>
+            <div class="gantt-cell" style="grid-column: 6;"></div>
+            <div class="gantt-cell" style="grid-column: 7;"></div>
+            <div class="gantt-cell" style="grid-column: 8;"></div>
+            <div class="gantt-cell" style="grid-column: 9;"></div>
+            <div class="gantt-cell" style="grid-column: 10;"></div>
+            <div class="gantt-cell" style="grid-column: 11;"></div>
+            <div class="gantt-cell" style="grid-column: 12;"></div>
+            <div class="gantt-cell" style="grid-column: 13;"></div>
+            <div class="gantt-cell" style="grid-column: 14;"></div>
+            <div class="gantt-cell" style="grid-column: 15;"></div>
+            <div class="gantt-bar bar-onprogress" style="grid-column: 13 / 16;">W12 - W14</div>
+          </div>
+
+          <!-- Row 14: System Integration & Testing -->
+          <div class="gantt-row gantt-row-even">
+            <div class="gantt-label">
+              <span class="gantt-task-title">System Integration &amp; Testing</span>
+              <span class="gantt-task-assignees">Mete, Yiğit, Meriç, Necla, Yusuf</span>
+            </div>
+            <div class="gantt-cell" style="grid-column: 2;"></div>
+            <div class="gantt-cell" style="grid-column: 3;"></div>
+            <div class="gantt-cell" style="grid-column: 4;"></div>
+            <div class="gantt-cell" style="grid-column: 5;"></div>
+            <div class="gantt-cell" style="grid-column: 6;"></div>
+            <div class="gantt-cell" style="grid-column: 7;"></div>
+            <div class="gantt-cell" style="grid-column: 8;"></div>
+            <div class="gantt-cell" style="grid-column: 9;"></div>
+            <div class="gantt-cell" style="grid-column: 10;"></div>
+            <div class="gantt-cell" style="grid-column: 11;"></div>
+            <div class="gantt-cell" style="grid-column: 12;"></div>
+            <div class="gantt-cell" style="grid-column: 13;"></div>
+            <div class="gantt-cell" style="grid-column: 14;"></div>
+            <div class="gantt-cell" style="grid-column: 15;"></div>
+            <div class="gantt-bar bar-onprogress" style="grid-column: 14 / 16;">W13 - W14</div>
+          </div>
+
+          <!-- Row 15: Demo Video & Final Report -->
+          <div class="gantt-row">
+            <div class="gantt-label">
+              <span class="gantt-task-title">Demo Video &amp; Final Report</span>
+              <span class="gantt-task-assignees">Necla, Yiğit, Yusuf</span>
+            </div>
+            <div class="gantt-cell" style="grid-column: 2;"></div>
+            <div class="gantt-cell" style="grid-column: 3;"></div>
+            <div class="gantt-cell" style="grid-column: 4;"></div>
+            <div class="gantt-cell" style="grid-column: 5;"></div>
+            <div class="gantt-cell" style="grid-column: 6;"></div>
+            <div class="gantt-cell" style="grid-column: 7;"></div>
+            <div class="gantt-cell" style="grid-column: 8;"></div>
+            <div class="gantt-cell" style="grid-column: 9;"></div>
+            <div class="gantt-cell" style="grid-column: 10;"></div>
+            <div class="gantt-cell" style="grid-column: 11;"></div>
+            <div class="gantt-cell" style="grid-column: 12;"></div>
+            <div class="gantt-cell" style="grid-column: 13;"></div>
+            <div class="gantt-cell" style="grid-column: 14;"></div>
+            <div class="gantt-cell" style="grid-column: 15;"></div>
+            <div class="gantt-bar bar-onprogress" style="grid-column: 14 / 16;">W13 - W14</div>
+          </div>
+
+          <!-- Row 16: Final Project Completed (Milestone) -->
+          <div class="gantt-row gantt-row-even">
+            <div class="gantt-label">
+              <span class="gantt-task-title">Final Project Completed</span>
+              <span class="gantt-task-assignees">Milestone</span>
+            </div>
+            <div class="gantt-cell" style="grid-column: 2;"></div>
+            <div class="gantt-cell" style="grid-column: 3;"></div>
+            <div class="gantt-cell" style="grid-column: 4;"></div>
+            <div class="gantt-cell" style="grid-column: 5;"></div>
+            <div class="gantt-cell" style="grid-column: 6;"></div>
+            <div class="gantt-cell" style="grid-column: 7;"></div>
+            <div class="gantt-cell" style="grid-column: 8;"></div>
+            <div class="gantt-cell" style="grid-column: 9;"></div>
+            <div class="gantt-cell" style="grid-column: 10;"></div>
+            <div class="gantt-cell" style="grid-column: 11;"></div>
+            <div class="gantt-cell" style="grid-column: 12;"></div>
+            <div class="gantt-cell" style="grid-column: 13;"></div>
+            <div class="gantt-cell" style="grid-column: 14;"></div>
+            <div class="gantt-cell" style="grid-column: 15;"></div>
+            <div class="gantt-milestone-container" style="grid-column: 16;">
+              <div class="gantt-milestone-diamond planned"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="gantt-legend">
+          <div class="gantt-legend-item">
+            <span class="legend-box bar-finished"></span>
+            <span>Finished</span>
+          </div>
+          <div class="gantt-legend-item">
+            <span class="legend-box bar-onprogress"></span>
+            <span>On-Progress</span>
+          </div>
+          <div class="gantt-legend-item">
+            <span class="legend-box bar-planned"></span>
+            <span>Planned / Future</span>
+          </div>
+          <div class="gantt-legend-item">
+            <span class="legend-diamond"></span>
+            <span>Milestone</span>
+          </div>
+        </div>
+        <div class="slide-footer"><span>CENG424 @ IZTECH</span><span>10 / 16</span></div>
+      </section>
+
+      <!-- ═══════════ SLIDE 11: EXPERIMENTAL RESULTS ═══════════ -->
+      <section>
+        <h2>Experimental Results</h2>
+        <div class="grid-3" style="text-align: center;">
+          <div class="card card--accent-top" style="padding: 16px;">
+            <div class="stat-value text-gradient" style="font-size: 2.2rem;">99.1%</div>
+            <div class="stat-label" style="margin-bottom: 8px;">FRAME ACCEPTANCE</div>
+            <p style="font-size: 0.7rem; color: var(--text-muted); line-height: 1.4; margin: 0;">
+              Tested under high EMI (10A AC wire routed parallel to the UART link). The CRC-16 CCITT validation successfully detected and dropped all corrupted payloads.
+            </p>
+          </div>
+          <div class="card card--warm-top" style="padding: 16px;">
+            <div class="stat-value text-gradient--warm" style="font-size: 2.2rem;">1.2cm</div>
+            <div class="stat-label" style="margin-bottom: 8px;">MEAN MTI ERROR</div>
+            <p style="font-size: 0.7rem; color: var(--text-muted); line-height: 1.4; margin: 0;">
+              Surpassed design targets of $\le 2\text{ cm}$. Nearest-Neighbor tracking maintained a 100% correct association rate with zero cross-target errors in multi-target tests.
+            </p>
+          </div>
+          <div class="card" style="padding: 16px; border-top: 3px solid var(--accent-emerald);">
+            <div class="stat-value text-gradient--cool" style="font-size: 2.2rem;">3.8s</div>
+            <div class="stat-label" style="margin-bottom: 8px;">PRINT LATENCY</div>
+            <p style="font-size: 0.7rem; color: var(--text-muted); line-height: 1.4; margin: 0;">
+              Well within the 5.0-second design budget. The printer task runs asynchronously in the background, ensuring double-buffered Vulkan rendering stays at 60+ FPS.
+            </p>
+          </div>
+        </div>
+        <div class="card" style="margin-top: 20px; padding: 20px; text-align: left;">
+          <p style="font-size: 0.8rem; margin: 0; line-height: 1.55; color: var(--text-secondary);">
+            Empirical verification shows that the dual-block XTEA cipher and CRC-16 check successfully secure the transmission channel without adding timing delay to the UART thread. Meanwhile, the Nearest-Neighbor association filters coordinate paths cleanly in the overlapping boundary regions of the scan array, providing high-fidelity tracking metrics.
+          </p>
+        </div>
+        <div class="slide-footer"><span>CENG424 @ IZTECH</span><span>11 / 16</span></div>
+      </section>
+
+      <!-- ═══════════ SLIDE 12: SIMULINK MODEL ═══════════ -->
+      <section>
+        <h2>MATLAB/Simulink Validation</h2>
+        <div class="card" style="text-align: left; padding: 24px;">
+          <h3 style="margin-bottom: 12px;">Programmatic Simulation Architecture</h3>
+          <div class="grid-2" style="gap: 32px; align-items: center;">
+            <div>
+              <p style="font-size: 0.8rem; margin-bottom: 16px; line-height: 1.5; color: var(--text-secondary);">
+                To validate our architecture prior to physical deployment, we developed a multi-rate Simulink model. This model is constructed programmatically via MATLAB API scripts (<code style="color: var(--accent-primary); font-family: var(--font-mono); font-size: 0.72rem;">build_radar_model.m</code>) to ensure 100% test reproducibility.
+              </p>
+              <div style="padding: 12px; background: rgba(0, 212, 255, 0.06); border-radius: var(--border-radius-xs); border: 1px solid rgba(0, 212, 255, 0.12);">
+                <p style="font-size: 0.72rem; color: var(--accent-primary); margin: 0; font-family: var(--font-mono); line-height: 1.4;">
+                  <strong>Fidelity Cross-Validation:</strong> Sim vs Hardware yields a 0.08% vs 0.10% frame drop rate under clean link conditions, proving numerical model equivalence.
+                </p>
+              </div>
+            </div>
+            <div>
+              <ul class="feature-list" style="font-size: 0.74rem; line-height: 1.55;">
+                <li><span class="bold">Scene Generator:</span> Updates target positions at runtime using linear kinematic motion paths.</li>
+                <li><span class="bold">Sensor Block:</span> Replicates FreeRTOS round-robin scheduling, encryption, and frame packing.</li>
+                <li><span class="bold">Channel Model:</span> Simulates physical EMI via additive Gaussian noise and random packet dropouts.</li>
+                <li><span class="bold">Parser Block:</span> Verifies CRC checksums and decrypts dual-block ciphertext arrays.</li>
+                <li><span class="bold">MTI Engine:</span> Performs spatial association and registers velocity coordinate updates.</li>
+                <li><span class="bold">Virtual Printer:</span> Emulates the ESC/POS printing protocol, outputting standard PBM files.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="slide-footer"><span>CENG424 @ IZTECH</span><span>12 / 16</span></div>
+      </section>
+
+      <!-- ═══════════ SLIDE 13: DELIVERABLES ═══════════ -->
+      <section>
+        <h2>Final Deliverables</h2>
+        <div class="grid-3" style="text-align: left;">
+          <div class="card card--accent-top" style="padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+              <h3 style="margin-bottom: 8px;">Embedded Firmware</h3>
+              <p style="font-size: 0.74rem; line-height: 1.5; color: var(--text-secondary); margin: 0;">
+                Arduino Uno codebase built on a hard real-time FreeRTOS kernel. It contains dedicated task queues for round-robin sensor acquisition, constant-time XTEA encryption blocks, and non-blocking interrupt-driven UART serial dispatches to maintain deterministic sweep rates.
+              </p>
+            </div>
+            <div class="badge badge--cyan" style="margin-top: 12px; align-self: flex-start;">ATMEGA328P</div>
+          </div>
+          <div class="card card--warm-top" style="padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+              <h3 style="margin-bottom: 8px; color: var(--accent-warm);">Edge Backend</h3>
+              <p style="font-size: 0.74rem; line-height: 1.5; color: var(--text-secondary); margin: 0;">
+                A multi-threaded C++20 application coordinating serial stream reading via raw termios configurations. It performs hardware sync checks, CRC-16 validation, XTEA decryption, spatial Nearest-Neighbor tracking, and prints raster logs in background spool threads.
+              </p>
+            </div>
+            <div class="badge badge--warm" style="margin-top: 12px; align-self: flex-start;">C++20 &amp; POSIX</div>
+          </div>
+          <div class="card" style="padding: 20px; border-top: 3px solid var(--accent-emerald); display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+              <h3 style="margin-bottom: 8px; color: var(--accent-emerald);">Vulkan Graphics GUI</h3>
+              <p style="font-size: 0.74rem; line-height: 1.5; color: var(--text-secondary); margin: 0;">
+                A high-performance 3D Plan Position Indicator (PPI) screen utilizing fragment shaders to emulate legacy CRT phosphorus decay. Target coordinate maps and motion vectors are updated smoothly on the screen, with tracking math offloaded to GPU compute shaders.
+              </p>
+            </div>
+            <div class="badge badge--emerald" style="margin-top: 12px; align-self: flex-start;">VULKAN &amp; GLSL</div>
+          </div>
+        </div>
+        <div class="slide-footer"><span>CENG424 @ IZTECH</span><span>13 / 16</span></div>
+      </section>
+
+      <!-- ═══════════ SLIDE 14: BUSINESS ═══════════ -->
+      <section>
+        <h2>Business Opportunities</h2>
+        <div class="grid-2" style="text-align: left;">
+          <div class="card card--warm-top">
+            <h3 style="color: var(--accent-warm);">Market Gap</h3>
+            <p style="font-size: 0.76rem; margin-bottom: 10px; line-height: 1.45; color: var(--text-secondary);">
+              Our system targets the market gap between commercial marine radars ($2,000+) and insecure hobby kits ($30). It delivers industrial-grade security and reliability on a consumer budget, costing under $150 total.
+            </p>
+            <ul class="feature-list" style="font-size: 0.72rem; line-height: 1.4;">
+              <li><span class="bold">Distributed Partitioning:</span> Prevents angular blind spots, allowing continuous scanning coverage.</li>
+              <li><span class="bold">Cryptographic Telemetry:</span> Encrypted XTEA transmission blocks UART coordinate spoofing.</li>
+              <li><span class="bold">Physical Audit Trail:</span> Asynchronous thermal receipt printing creates tamper-resistant sweep records.</li>
+            </ul>
+          </div>
+          <div class="card card--accent-top" style="display: flex; flex-direction: column; justify-content: center;">
+            <h3>Target Applications</h3>
+            <ul class="feature-list" style="font-size: 0.74rem; line-height: 1.5; margin-top: 8px;">
+              <li><span class="bold">Warehouse Robotics:</span> Obstacle detection and motion tracking for AGVs and warehouse floor rovers.</li>
+              <li><span class="bold">Perimeter Security:</span> Low-cost, secure intrusion detection nodes for perimeter monitoring.</li>
+              <li><span class="bold">Tactical Recon:</span> Small search-and-rescue rovers requiring secure telemetry feeds.</li>
+              <li><span class="bold">Academic Platform:</span> Affordable educational rig for teaching Cyber-Physical Systems (CPS).</li>
+            </ul>
+          </div>
+        </div>
+        <div class="slide-footer"><span>CENG424 @ IZTECH</span><span>14 / 16</span></div>
+      </section>
+
+      <!-- ═══════════ SLIDE 15: CONCLUSION ═══════════ -->
+      <section>
+        <h2>Conclusion</h2>
+        <div class="grid-2" style="text-align: left;">
+          <div class="card">
+            <h3>Key Achievements</h3>
+            <ul class="feature-list" style="font-size: 0.72rem; line-height: 1.45;">
+              <li>
+                <span class="bold">FreeRTOS Scan Coordinator:</span> Eliminates scanning blind spots by decoupling physical sweeps from coordinate transmission.
+              </li>
+              <li>
+                <span class="bold">XTEA/CRC-16 Framing:</span> Encrypts UART communications and ensures 99.998% link drop detection in noisy environments.
+              </li>
+              <li>
+                <span class="bold">Vulkan Compute Acceleration:</span> Offloads tracking calculations to Maxwell workgroups, maintaining rendering at 60+ FPS.
+              </li>
+              <li>
+                <span class="bold">Thermal Audit Logs:</span> Generates permanent, physical scan history trails, mitigating digital record tampering.
+              </li>
+              <li>
+                <span class="bold">Simulink Verification:</span> Confirms mathematical models and secure framing algorithms with bit-level system equivalence.
+              </li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Future Roadmap</h3>
+            <ul class="feature-list" style="font-size: 0.72rem; line-height: 1.45;">
+              <li>
+                <span class="bold">EEPROM Calibration:</span> Store sensor-servo mounting offsets directly in the Arduino's volatile-safe on-chip EEPROM.
+              </li>
+              <li>
+                <span class="bold">Adaptive Scanning:</span> Dynamically scale servo sweep speeds depending on target density and motion vectors.
+              </li>
+              <li>
+                <span class="bold">XTEA-CBC Encryption:</span> Implement Cipher Block Chaining to eliminate identical ciphertext blocks inherent to ECB mode.
+              </li>
+              <li>
+                <span class="bold">Kalman Filtering:</span> Replace Nearest-Neighbor tracking with an Extended Kalman Filter (EKF) to smoothen coordinate paths.
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div class="slide-footer"><span>CENG424 @ IZTECH</span><span>15 / 16</span></div>
+      </section>
+
+      <!-- ═══════════ SLIDE 16: DEMO ═══════════ -->
+      <section>
+        <h2>Live Demonstration</h2>
+        <div class="grid-2" style="align-items: center;">
+          <div class="card" style="padding: 24px; text-align: left;">
+            <h3>Radar Interface Simulation</h3>
+            <p style="font-size: 0.8rem; line-height: 1.5; margin: 0 0 12px; color: var(--text-secondary);">
+              This visual simulation replicates the edge node's Plan Position Indicator (PPI) output. Raw sensor ranges are plotted in real time as target points, and headings are projected dynamically across sweep updates.
+            </p>
+            <ul class="feature-list" style="font-size: 0.74rem; line-height: 1.45;">
+              <li><span style="color: var(--accent-primary); font-weight: 600;">Cyan Blips:</span> Confirmed target coordinates mapped in unified world space.</li>
+              <li><span class="bold">Motion Arrows:</span> Direction and speed vectors calculated via spatial history association.</li>
+              <li><span class="bold">Phosphor Trail:</span> Sweeping radial line illustrating GPU-simulated CRT decay.</li>
+            </ul>
+          </div>
+          <div>
+            <div class="radar-widget" id="demo-radar">
+              <div class="radar-sweep"></div>
+              <div class="radar-ring radar-ring--1"></div>
+              <div class="radar-ring radar-ring--2"></div>
+              <div class="radar-crosshair-h"></div>
+              <div class="radar-crosshair-v"></div>
+              <div class="radar-blip" style="top: 65px; left: 95px;"></div>
+              <div class="radar-blip" style="top: 175px; left: 170px; animation-delay: 0.7s;"></div>
+              <div class="radar-blip" style="top: 120px; left: 185px; animation-delay: 1.3s;"></div>
+            </div>
+            <p style="font-size: 0.7rem; margin-top: 14px; color: var(--accent-primary); font-family: var(--font-mono); text-align: center;">
+              SCANNING RANGE: 800 mm
+            </p>
+          </div>
+        </div>
+        <div class="slide-footer"><span>CENG424 @ IZTECH</span><span>16 / 16</span></div>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- Export FAB -->
+  <div class="export-fab">
+    <button class="export-btn" onclick="openExportModal()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      Export PDF
+    </button>
+  </div>
+
+  <!-- Export Modal -->
+  <div id="export-modal" class="modal-overlay">
+    <div class="modal-box">
+      <span class="modal-close" onclick="closeExportModal()">&times;</span>
+      <h3>Export as PDF</h3>
+      <p style="font-size: 0.85rem; line-height: 1.6; color: var(--text-secondary);">
+        Export this presentation to a clean PDF with preserved backgrounds and colors:
+      </p>
+      <ol>
+        <li>Add <code>?print-pdf</code> to the URL:<br><code>presentation.html?print-pdf</code></li>
+        <li>Press <kbd style="background: var(--bg-card); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border-subtle);">⌘P</kbd> to open Print dialog.</li>
+        <li>Set destination to <strong style="color: var(--text-primary);">"Save as PDF"</strong>.</li>
+        <li>Layout: <strong style="color: var(--text-primary);">Landscape</strong>, Paper: <strong style="color: var(--text-primary);">A4</strong>, Margins: <strong style="color: var(--text-primary);">None</strong>.</li>
+        <li>Check <strong style="color: var(--accent-primary);">"Background graphics"</strong> to keep colors.</li>
+        <li>Click Save — your PDF is ready!</li>
+      </ol>
+      <button class="modal-btn" onclick="closeExportModal()">Got it</button>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/notes/notes.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/markdown/markdown.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/highlight/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/math/math.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/katex.min.js"></script>
+
+  <script>
+    Reveal.initialize({
+      hash: true,
+      slideNumber: 'c/t',
+      progress: false,
+      transition: 'none',
+      pdfPageHeightOffset: 0,
+      width: 1280,
+      height: 720,
+      margin: 0.04,
+      plugins: [ RevealMarkdown, RevealHighlight, RevealNotes, RevealMath.KaTeX ]
+    });
+
+    function openExportModal() {
+      document.getElementById('export-modal').style.display = 'flex';
+    }
+
+    function closeExportModal() {
+      document.getElementById('export-modal').style.display = 'none';
+    }
+
+    window.addEventListener('click', function(e) {
+      const modal = document.getElementById('export-modal');
+      if (e.target === modal) modal.style.display = 'none';
+    });
+
+    window.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeExportModal();
+    });
+  </script>
+</body>
+</html>

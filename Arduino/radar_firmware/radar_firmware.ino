@@ -351,9 +351,9 @@ void setup()
 
   // Channel 1 — left flank head, HC-SR04, 0-180° sweep.
   channels[1].id = 1;
-  channels[1].servoPin = 12;
-  channels[1].trigPin = 4;
-  channels[1].echoPin = 5;
+  channels[1].servoPin = 10;
+  channels[1].trigPin = 2;
+  channels[1].echoPin = 3;
   channels[1].angle = 0;
   channels[1].minAngle = 0;
   channels[1].maxAngle = 180;
@@ -363,9 +363,9 @@ void setup()
 
   // Channel 2 — right flank head, HC-SR04, 0-180° sweep.
   channels[2].id = 2;
-  channels[2].servoPin = 10;
-  channels[2].trigPin = 2;
-  channels[2].echoPin = 3;
+  channels[2].servoPin = 11;
+  channels[2].trigPin = 4;
+  channels[2].echoPin = 5;
   channels[2].angle = 0;
   channels[2].minAngle = 0;
   channels[2].maxAngle = 180;

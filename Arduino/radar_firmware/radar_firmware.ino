@@ -28,6 +28,10 @@
 #define BAUD_RATE 38400
 #define SYNC_BYTE_1 0xAA
 #define SYNC_BYTE_2 0x55
+// Start handshake: servos idle (parked, no sweep, no telemetry) until the
+// backend sends this byte over UART on connect. Matches the start command the
+// backend emits in backend/src/serial_source.cpp.
+#define START_COMMAND_BYTE 0x53  // 'S'
 #define HCSR04_TIMEOUT_US 30000UL
 #define SENSOR_SETTLE_DELAY_MS 5
 #define SERVO_STEP_DELAY_MS 15
@@ -108,15 +112,40 @@ uint16_t read_sensor_distance_mm(uint8_t trigPin, uint8_t echoPin) {
   return (uint16_t)distance_mm;
 }
 
+// Block until the backend signals start. Servos stay attached and parked at
+// their home angle; no readings are taken and no telemetry is emitted until the
+// start byte arrives. The UART RX buffer is drained looking for the command, so
+// the backend may send it repeatedly (to cover the post-reset bootloader window)
+// without ill effect. Returns once the start byte has been seen.
+static void waitForStartCommand() {
+  for (;;) {
+    while (Serial.available() > 0) {
+      if (Serial.read() == START_COMMAND_BYTE) return;
+    }
+    vTaskDelay(MS_TO_TICKS_ROUNDED(20));
+  }
+}
+
 // --- Task 1: Scan Coordinator ---
 // Round-robin: read main -> left -> right, pack RawData3, advance all 3 servos.
 void TaskScanCoordinator(void *pvParameters) {
   (void) pvParameters;
 
+  // Drive every head to its start angle (minAngle) and give it time to physically
+  // travel there. The Servo library keeps pulsing on Timer1, so the heads are
+  // actively held at the start position -- not floating -- for the whole wait.
   for (uint8_t i = 0; i < 3; i++) {
+    channels[i].angle = channels[i].minAngle;
+    channels[i].sweepingForward = true;
     channels[i].servo.attach(channels[i].servoPin);
     channels[i].servo.write(channels[i].angle);
   }
+  vTaskDelay(MS_TO_TICKS_ROUNDED(500));  // settle at start position before idling
+
+  // Hold at the start position until the backend connects and sends the start
+  // command. While we block, the security/UART tasks sit empty (no data is
+  // queued), so the whole pipeline stays quiet and the heads stay put at start.
+  waitForStartCommand();
 
   uint8_t cycleCounter = 0;
   RawData3 data;

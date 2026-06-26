@@ -18,6 +18,18 @@
 
 namespace radar {
 
+// Start handshake. The firmware idles (servos parked, no sweep, no telemetry)
+// until it receives this byte. It is sent repeatedly across a short window after
+// opening the port: opening pulses DTR and reboots the Uno, which then spends
+// ~2 s in its bootloader before the sketch starts reading, so a single send
+// could be lost. The firmware ignores extra copies once it has started.
+// Must match START_COMMAND_BYTE in Arduino/radar_firmware/radar_firmware.ino.
+namespace {
+constexpr std::uint8_t kStartCommandByte = 0x53; // 'S'
+constexpr int kStartCommandRepeats = 8;
+constexpr std::chrono::milliseconds kStartCommandInterval{300};
+} // namespace
+
 #ifdef _WIN32
 
 struct SerialByteSourceImpl {
@@ -42,8 +54,9 @@ SerialByteSource::SerialByteSource(std::string port_name, int baud_rate)
     : port_name_(std::move(port_name)), baud_rate_(baud_rate),
       impl_(std::make_unique<SerialByteSourceImpl>()) {
   const std::string device = normalize_windows_port_name(port_name_);
-  impl_->handle = CreateFileA(device.c_str(), GENERIC_READ, 0, nullptr,
-                              OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+  impl_->handle = CreateFileA(device.c_str(), GENERIC_READ | GENERIC_WRITE, 0,
+                              nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL,
+                              nullptr);
   if (impl_->handle == INVALID_HANDLE_VALUE) {
     throw std::runtime_error("failed to open serial port: " + port_name_);
   }
@@ -72,6 +85,13 @@ SerialByteSource::SerialByteSource(std::string port_name, int baud_rate)
   timeouts.ReadTotalTimeoutMultiplier = 0;
   if (!SetCommTimeouts(impl_->handle, &timeouts)) {
     throw std::runtime_error("SetCommTimeouts failed for: " + port_name_);
+  }
+
+  // Tell the firmware to leave its idle state and start sweeping.
+  for (int i = 0; i < kStartCommandRepeats; ++i) {
+    DWORD written = 0;
+    WriteFile(impl_->handle, &kStartCommandByte, 1, &written, nullptr);
+    std::this_thread::sleep_for(kStartCommandInterval);
   }
 }
 
@@ -157,6 +177,15 @@ SerialByteSource::SerialByteSource(std::string port_name, int baud_rate)
 
   if (tcsetattr(impl_->fd, TCSANOW, &tty) != 0) {
     throw std::runtime_error("tcsetattr failed: " + std::string(std::strerror(errno)));
+  }
+
+  // Tell the firmware to leave its idle state and start sweeping.
+  for (int i = 0; i < kStartCommandRepeats; ++i) {
+    if (write(impl_->fd, &kStartCommandByte, 1) < 0 && errno != EINTR) {
+      throw std::runtime_error("serial start-command write failed: " +
+                               std::string(std::strerror(errno)));
+    }
+    std::this_thread::sleep_for(kStartCommandInterval);
   }
 }
 

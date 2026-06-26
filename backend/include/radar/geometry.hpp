@@ -64,11 +64,12 @@ constexpr double kFlankMaxRangeMm = 600.0; // 60 cm
 // Main HY-SRF05: origin, 120 deg sweep, 80 cm range.
 inline const SensorMount kDefaultMainMount{0, 0.0, 0.0, kMainHeadingOffsetDeg, 1.0,
                                            kMainMaxRangeMm, 0.0, 120.0};
-// Left flank: mounted on the main wedge's local-120 boundary arm (world 150
-// deg), kFlankBaselineMm out. offset = baseline * (cos150, sin150). local-0
-// sits on that boundary edge; angle_sign = -1 sweeps the 180 deg arc inward
-// (world 150 -> -30), across the main sensor's workspace.
-inline const SensorMount kDefaultLeftMount{1, -346.4101615, 200.0, 150.0, -1.0,
+// Left flank: positioned on the main wedge's local-120 boundary arm (world
+// 150 deg), kFlankBaselineMm out. offset = baseline * (cos150, sin150). In
+// real life it is aimed at the main sensor, so its local-0 boresight points
+// at the origin (world -30 deg); angle_sign = +1 sweeps the 180 deg arc from
+// there (world -30 -> 150) up across the main sensor's workspace.
+inline const SensorMount kDefaultLeftMount{1, -346.4101615, 200.0, -30.0, 1.0,
                                            kFlankMaxRangeMm, 0.0, 180.0};
 // Right flank: mounted on the main wedge's local-0 boundary arm (world 30
 // deg), mirrored. offset = baseline * (cos30, sin30). local-0 sits on that

@@ -363,7 +363,7 @@ void setup()
 
   // Channel 2 — right flank head, HC-SR04, 0-180° sweep.
   channels[2].id = 2;
-  channels[2].servoPin = 11;
+  channels[2].servoPin = 12;
   channels[2].trigPin = 4;
   channels[2].echoPin = 5;
   channels[2].angle = 0;

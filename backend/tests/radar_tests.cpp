@@ -265,19 +265,15 @@ void test_geometry_transform() {
     assert(std::abs(right.world_y_mm - main_boundary.world_y_mm) < 1.0);
   }
 
-  // angle_sign mirrors the two flanks: left and right mounts are offset
-  // and headed as mirror images of each other across the main sensor's
-  // center bearing (world "up", x=0), so the same local angle/distance
-  // lands at mirrored world coordinates -- x negates, y matches. (Their
-  // world_angle_deg, the bearing *from the main sensor's origin*, isn't a
-  // simple mirror once each mount's nonzero offset enters the atan2 -- the
-  // x/y coordinates are the direct, offset-independent check on angle_sign
-  // and heading_offset_deg.)
+  // The left flank is aimed at the main sensor: its local-0 boresight points
+  // at the origin, so a local-0 reading at the 400 mm flank baseline lands on
+  // the main sensor itself (0, 0). (This is the asymmetry from the real rig --
+  // the left looks toward main, while the right's local-0 still sits on its
+  // boundary arm.)
   {
-    const auto left = radar::to_world(point(30, 100, 0, RadarClock::now(), 1), geometry);
-    const auto right = radar::to_world(point(30, 100, 0, RadarClock::now(), 2), geometry);
-    assert(std::abs(left.world_x_mm + right.world_x_mm) < 1.0);
-    assert(std::abs(left.world_y_mm - right.world_y_mm) < 1.0);
+    const auto left0 = radar::to_world(point(0, 400, 0, RadarClock::now(), 1), geometry);
+    assert(std::abs(left0.world_x_mm) < 1.0);
+    assert(std::abs(left0.world_y_mm) < 1.0);
   }
 
   // Sweep batch overload skips zero-distance (timeout) readings.

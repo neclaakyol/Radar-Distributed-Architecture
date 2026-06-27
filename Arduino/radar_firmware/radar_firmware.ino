@@ -37,8 +37,31 @@
 // Both bytes must match the constants in backend/src/serial_source.cpp.
 #define START_COMMAND_BYTE 0x53 // 'S'
 #define STOP_COMMAND_BYTE 0x58  // 'X'
-#define HCSR04_TIMEOUT_US 30000UL
-#define SENSOR_SETTLE_DELAY_MS 5
+// --- Echo timing & noise rejection ---
+// Max echo window. 6 ms ~= 1.0 m round trip. The cardboard arena is well under
+// 1 m, so anything past this is a wall / ceiling / passer-by, not a target.
+// Cutting the window from 30 ms also shrinks the time a neighbouring head can be
+// contaminated by a lingering ping (see SENSOR_QUIET_GAP_MS below).
+#define HCSR04_TIMEOUT_US 6000UL
+// Per-reading range gate. Echoes nearer than the transducer ring-down dead zone
+// (~4 cm) or beyond the working arena are rejected as garbage (reported as 0 /
+// "no detection"). Kills the bogus "NEAREST TO MAIN: 2 CM" readout seen with an
+// empty plane.
+#define SENSOR_MIN_RANGE_MM 40
+#define SENSOR_MAX_RANGE_MM 1000
+// Median / agreement filter: PING_COUNT pings per head per angle. A reading is
+// only reported if a simple majority land in range AND agree within
+// PING_AGREEMENT_SPREAD_MM; otherwise it is dropped. This removes the lone
+// fliers that the backend MTI was turning into the on-screen arrow storm.
+// Raising PING_COUNT cleans up more at the cost of a slower sweep.
+#define PING_COUNT 3
+#define PING_AGREEMENT_SPREAD_MM 60
+#define PING_INTERVAL_US 8000UL // quiet gap between a single head's own pings
+// Quiet gap between *different* heads, in ms. Lets one head's burst and
+// reverberation die out before the next head listens -- the main cure for the
+// cross-sensor phantom blips. Rounds up to a 16 ms FreeRTOS tick; larger =
+// cleaner but slower.
+#define SENSOR_QUIET_GAP_MS 30
 #define SERVO_STEP_DELAY_MS 15
 #define MS_TO_TICKS_ROUNDED(ms) ((TickType_t)(((ms) + portTICK_PERIOD_MS - 1) / portTICK_PERIOD_MS))
 
@@ -114,8 +137,9 @@ uint16_t crc16_ccitt(const uint8_t *data, uint8_t length)
   return crc;
 }
 
-// Shared trig/echo timing routine; works for HC-SR04 and HY-SRF05 in trig/echo mode.
-uint16_t read_sensor_distance_mm(uint8_t trigPin, uint8_t echoPin)
+// One raw trig/echo ping. Returns round-trip distance in mm, or 0 on timeout.
+// Works for HC-SR04 and HY-SRF05 in trig/echo mode (identical timing).
+uint16_t ping_once_mm(uint8_t trigPin, uint8_t echoPin)
 {
   digitalWrite(trigPin, LOW);
   delayMicroseconds(2);
@@ -129,6 +153,49 @@ uint16_t read_sensor_distance_mm(uint8_t trigPin, uint8_t echoPin)
   if (distance_mm > 65535UL)
     return 65535;
   return (uint16_t)distance_mm;
+}
+
+// Filtered measurement for one head: PING_COUNT pings, each range-gated, then a
+// median taken over the in-range samples. Reports 0 ("no detection") unless a
+// simple majority of pings land in range and cluster within
+// PING_AGREEMENT_SPREAD_MM -- which rejects the isolated fliers HC-SR04s emit.
+uint16_t read_sensor_distance_mm(uint8_t trigPin, uint8_t echoPin)
+{
+  uint16_t samples[PING_COUNT];
+  uint8_t valid = 0;
+  for (uint8_t i = 0; i < PING_COUNT; i++)
+  {
+    uint16_t d = ping_once_mm(trigPin, echoPin);
+    if (d >= SENSOR_MIN_RANGE_MM && d <= SENSOR_MAX_RANGE_MM)
+      samples[valid++] = d;
+    if (i + 1 < PING_COUNT)
+      delayMicroseconds(PING_INTERVAL_US); // let this head's own echo die first
+  }
+
+  // Require a simple majority of pings to land a valid in-range echo, else this
+  // angle is treated as empty space.
+  const uint8_t need = (PING_COUNT / 2) + 1;
+  if (valid < need)
+    return 0;
+
+  // Insertion sort the (at most PING_COUNT) valid samples.
+  for (uint8_t i = 1; i < valid; i++)
+  {
+    uint16_t key = samples[i];
+    int8_t j = (int8_t)i - 1;
+    while (j >= 0 && samples[j] > key)
+    {
+      samples[j + 1] = samples[j];
+      j--;
+    }
+    samples[j + 1] = key;
+  }
+
+  // The agreeing pings must still cluster; a wide spread means an unstable echo.
+  if (samples[valid - 1] - samples[0] > PING_AGREEMENT_SPREAD_MM)
+    return 0;
+
+  return samples[valid / 2]; // median of the in-range samples
 }
 
 // Block until the backend signals start. Servos stay attached and parked at
@@ -196,7 +263,10 @@ void TaskScanCoordinator(void *pvParameters)
       if (stopReceived)
         break;
 
-      // Read all 3 channels; brief settle gap between triggers to avoid acoustic crosstalk.
+      // Read all 3 channels. Each read is median-filtered (read_sensor_distance_mm).
+      // A real quiet gap between heads lets each head's burst + reverberation die
+      // out before the next one listens -- the main cure for cross-sensor phantom
+      // blips. The vTaskDelay yields the CPU to the framing/UART tasks during the gap.
       for (uint8_t i = 0; i < 3; i++)
       {
         channels[i].lastDistance = read_sensor_distance_mm(channels[i].trigPin, channels[i].echoPin);
@@ -206,7 +276,7 @@ void TaskScanCoordinator(void *pvParameters)
         data.timeouts[i] = channels[i].lastTimeout;
         if (i < 2)
         {
-          vTaskDelay(MS_TO_TICKS_ROUNDED(SENSOR_SETTLE_DELAY_MS));
+          vTaskDelay(MS_TO_TICKS_ROUNDED(SENSOR_QUIET_GAP_MS));
         }
       }
 

@@ -13,6 +13,7 @@
 \usepackage{enumitem}
 \usepackage{multirow}
 \usepackage{array}
+\usepackage{float}
 % pgfgantt removed -- schedule is presented in table form
 
 % Code listing style
@@ -515,26 +516,14 @@ Arduino Supply & 9V battery & 1 \\
 % ============================================================================
 \section{Project Schedule \& Team Roles}
 \label{sec:schedule}
-The development timeline was divided into four stages over 16 weeks, with overlapping stages to allow for parallelism. Table~\ref{tab:gantt_summary} summarizes the stage timeline.
+The development timeline was divided into four stages over 16 weeks, with overlapping stages to allow for parallelism. Fig.~\ref{fig:gantt_chart} illustrates the detailed project schedule.
 
-\begin{table}[htbp]
-\caption{Development Stage Timeline}
-\footnotesize
-\setlength{\tabcolsep}{4pt}
-\begin{center}
-\begin{tabular}{@{}p{3.5cm}cp{3.0cm}@{}}
-\toprule
-\textbf{Stage} & \textbf{Weeks} & \textbf{Focus} \\
-\midrule
-Stage 1: Research \& Feasibility & 1--7 & Literature review, proposal \\
-Stage 2: Secure Sensor Node \& Modeling & 8--10 & FreeRTOS, XTEA, Simulink \\
-Stage 3: Edge Processing \& Visuals & 11--14 & MTI, PBM logging, Vulkan \\
-Stage 4: Integration, Testing \& Docs & 15--16 & Hardware testing, final report \\
-\bottomrule
-\end{tabular}
-\label{tab:gantt_summary}
-\end{center}
-\end{table}
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{gantt.png}
+\caption{Development stage timeline and task schedules.}
+\label{fig:gantt_chart}
+\end{figure}
 
 \subsection{Stage 1: Research \& Feasibility (Weeks 1--7)}
 During the first phase, all team members collaborated on researching prior literature on Moving Target Indication (MTI), distributed embedded networks, and real-time processing architectures. 
